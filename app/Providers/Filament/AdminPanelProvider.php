@@ -28,6 +28,13 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->navigationGroups([
+                'Assortiment',
+                'Verkoop',
+                'Inkoop',
+                'Logistiek',
+                'Systeem / Beheer',
+            ])
             ->colors([
                 'primary' => Color::Amber,
             ])

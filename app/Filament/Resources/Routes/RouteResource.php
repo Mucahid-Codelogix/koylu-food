@@ -22,6 +22,10 @@ class RouteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowTrendingUp;
 
+    protected static ?string $navigationLabel = 'Routes';
+    protected static ?string $modelLabel = 'Routes';
+    protected static string|null|\UnitEnum $navigationGroup = 'Logistiek';
+
     protected static ?string $recordTitleAttribute = 'route_date';
 
     public static function form(Schema $schema): Schema

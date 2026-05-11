@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RouteStopStatus;
 use Database\Factories\RouteStopFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,11 +17,10 @@ class RouteStop extends Model implements Sortable
 
     protected $guarded = [];
 
-    protected $fillable = ['stop_order'];
-
     public $sortable = [
         'order_column_name' => 'stop_order',
         'sort_when_creating' => true,
+        'status' => RouteStopStatus::class,
     ];
 
     public function route(): BelongsTo

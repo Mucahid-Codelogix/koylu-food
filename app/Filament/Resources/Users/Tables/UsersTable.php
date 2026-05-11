@@ -15,22 +15,18 @@ class UsersTable
     {
         return $table
             ->columns([
-                TextColumn::make('customer.id')
-                    ->searchable(),
+
                 TextColumn::make('name')
-                    ->searchable(),
-                TextColumn::make('role')
-                    ->badge()
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email address')
                     ->searchable(),
-                TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable(),
-                TextColumn::make('two_factor_confirmed_at')
-                    ->dateTime()
-                    ->sortable(),
+                TextColumn::make('role')
+                    ->badge()
+                    ->searchable(),
+                TextColumn::make('customer.contact_name')
+                    ->searchable(),
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

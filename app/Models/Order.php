@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,15 @@ class Order extends Model
 
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'status' => OrderStatus::class,
+            'order_date' => 'date',
+            'delivery_date' => 'date',
+        ];
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
@@ -22,5 +32,15 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function delivery()
+    {
+        return $this->hasOne(Delivery::class);
+    }
+
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
     }
 }

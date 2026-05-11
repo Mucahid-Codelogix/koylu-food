@@ -16,16 +16,23 @@ class RoutesTable
         return $table
             ->columns([
                 TextColumn::make('driver.name')
+                    ->label('chauffeur')
+                    ->searchable(),
+                TextColumn::make('vehicle.license_plate')
+                    ->label('Wagen')
                     ->searchable(),
                 TextColumn::make('route_date')
+                    ->label('Datum')
                     ->date()
                     ->sortable(),
                 TextColumn::make('status')
                     ->searchable(),
                 TextColumn::make('started_at')
+                    ->label('Start')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('completed_at')
+                    ->label('Afgerond')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('created_at')

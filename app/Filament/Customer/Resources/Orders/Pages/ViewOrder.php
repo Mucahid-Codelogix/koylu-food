@@ -17,6 +17,17 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('downloadLeverbon')
+                ->label('Leverbon downloaden')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->url(fn () => $this->record->delivery
+                    ? route('leverbon.download', $this->record->delivery)
+                    : null
+                )
+                ->openUrlInNewTab()
+                ->visible(fn () => $this->record->delivery !== null),
+
             Action::make('orderAgain')
                 ->label('Order Again')
                 ->button()

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Customers\Schemas;
 
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class CustomerInfolist
@@ -12,28 +13,81 @@ class CustomerInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('company_name'),
-                TextEntry::make('contact_name')
-                    ->placeholder('-'),
-                TextEntry::make('email')
-                    ->label('Email address')
-                    ->placeholder('-'),
-                TextEntry::make('phone')
-                    ->placeholder('-'),
-                TextEntry::make('address'),
-                TextEntry::make('postal_code'),
-                TextEntry::make('city'),
-                TextEntry::make('country'),
-                TextEntry::make('min_order_amount')
-                    ->numeric(),
-                IconEntry::make('is_active')
-                    ->boolean(),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
+
+                Section::make('Bedrijfsinformatie')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('company_name')
+                            ->label('Bedrijfsnaam')
+                            ->placeholder('-'),
+
+                        TextEntry::make('contact_name')
+                            ->label('Contactpersoon')
+                            ->placeholder('-'),
+
+                        IconEntry::make('is_active')
+                            ->label('Actief')
+                            ->boolean(),
+
+                    ]),
+
+                Section::make('Contactgegevens')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('email')
+                            ->label('E-mailadres')
+                            ->placeholder('-')
+                            ->copyable(),
+
+                        TextEntry::make('phone')
+                            ->label('Telefoonnummer')
+                            ->placeholder('-'),
+
+                    ]),
+
+                Section::make('Adresgegevens')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('address')
+                            ->label('Adres')
+                            ->placeholder('-'),
+
+                        TextEntry::make('postal_code')
+                            ->label('Postcode')
+                            ->placeholder('-'),
+
+                        TextEntry::make('city')
+                            ->label('Plaats')
+                            ->placeholder('-'),
+
+                        TextEntry::make('country')
+                            ->label('Land')
+                            ->placeholder('-'),
+
+                    ]),
+
+                Section::make('Bestelinstellingen')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('min_order_amount')
+                            ->label('Minimale bestelhoeveelheid')
+                            ->numeric(decimalPlaces: 2)
+                            ->suffix(' kg')
+                            ->placeholder('-'),
+
+                        TextEntry::make('exact_article_suffix')
+                            ->label('Artikeltoevoeging')
+                            ->placeholder('-'),
+
+                        IconEntry::make('is_vat_exempt')
+                            ->label('BTW vrijgesteld')
+                            ->boolean(),
+
+                    ]),
             ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RouteStatus;
 use Database\Factories\RouteFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,12 +15,32 @@ class Route extends Model
 
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'status' => RouteStatus::class,
+            'route_date' => 'date',
+            'completed_at' => 'date',
+        ];
+    }
+
+    public function isLoadingComplete(): bool
+    {
+        return $this->loading_completed_at !== null;
+    }
+
     public function driver(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function routeStops(){
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
+    }
+
+    public function routeStops()
+    {
         return $this->hasMany(RouteStop::class);
     }
 }

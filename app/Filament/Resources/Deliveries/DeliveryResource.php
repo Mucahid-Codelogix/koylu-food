@@ -24,6 +24,10 @@ class DeliveryResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'delivered_at';
 
+    protected static ?string $navigationLabel = 'Leveringen';
+    protected static ?string $modelLabel = 'Leveringen';
+    protected static string|null|\UnitEnum $navigationGroup = 'Logistiek';
+
     public static function form(Schema $schema): Schema
     {
         return DeliveryForm::configure($schema);

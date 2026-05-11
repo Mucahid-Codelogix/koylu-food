@@ -23,4 +23,18 @@ class Customer extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function productPrices()
+    {
+        return $this->hasMany(CustomerProductPrice::class);
+    }
+
+
+    public function priceForProduct(Product $product): float
+    {
+        $customPrice = $this->productPrices
+            ->firstWhere('product_id', $product->id);
+
+        return $customPrice ? $customPrice->price : $product->price;
+    }
 }

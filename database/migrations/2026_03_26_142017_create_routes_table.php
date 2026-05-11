@@ -17,6 +17,10 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
+            $table->foreignId('vehicle_id')
+                ->constrained('vehicles')
+                ->cascadeOnDelete();
+
             $table->date('route_date')->index();
             $table->string('status')->index();
 

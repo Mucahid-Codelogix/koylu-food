@@ -17,26 +17,35 @@ class CustomersTable
         return $table
             ->columns([
                 TextColumn::make('company_name')
+                    ->label('Bedrijf')
                     ->searchable(),
                 TextColumn::make('contact_name')
+                    ->label('Contact persoon')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email address')
                     ->searchable(),
                 TextColumn::make('phone')
+                    ->label('Telefoonnummer')
                     ->searchable(),
                 TextColumn::make('address')
+                    ->label('Adres')
                     ->searchable(),
                 TextColumn::make('postal_code')
+                    ->label('Post code')
                     ->searchable(),
                 TextColumn::make('city')
+                    ->label('Stad')
                     ->searchable(),
                 TextColumn::make('country')
+                    ->label('Land')
                     ->searchable(),
                 TextColumn::make('min_order_amount')
+                    ->label('Minimale order afnamen')
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('is_active')
+                    ->label('is Actief')
                     ->boolean(),
                 TextColumn::make('created_at')
                     ->dateTime()

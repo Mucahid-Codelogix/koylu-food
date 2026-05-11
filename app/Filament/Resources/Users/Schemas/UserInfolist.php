@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class UserInfolist
@@ -11,32 +12,74 @@ class UserInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('customer.id')
-                    ->label('Customer')
-                    ->placeholder('-'),
-                TextEntry::make('name'),
-                TextEntry::make('role')
-                    ->badge(),
-                TextEntry::make('email')
-                    ->label('Email address'),
-                TextEntry::make('email_verified_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('two_factor_secret')
-                    ->placeholder('-')
-                    ->columnSpanFull(),
-                TextEntry::make('two_factor_recovery_codes')
-                    ->placeholder('-')
-                    ->columnSpanFull(),
-                TextEntry::make('two_factor_confirmed_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
+
+                Section::make('Gebruikersinformatie')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('customer.company_name')
+                            ->label('Klant')
+                            ->placeholder('-'),
+
+                        TextEntry::make('name')
+                            ->label('Naam'),
+
+                        TextEntry::make('role')
+                            ->label('Rol')
+                            ->badge(),
+
+                        TextEntry::make('email')
+                            ->label('E-mailadres'),
+
+                    ]),
+
+                Section::make('Beveiliging')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('email_verified_at')
+                            ->label('E-mail geverifieerd op')
+                            ->dateTime()
+                            ->placeholder('-'),
+
+                        TextEntry::make('two_factor_confirmed_at')
+                            ->label('2FA bevestigd op')
+                            ->dateTime()
+                            ->placeholder('-'),
+
+                    ]),
+
+                Section::make('Two Factor Authenticatie')
+                    ->collapsed()
+                    ->schema([
+
+                        TextEntry::make('two_factor_secret')
+                            ->label('2FA Secret')
+                            ->placeholder('-')
+                            ->columnSpanFull(),
+
+                        TextEntry::make('two_factor_recovery_codes')
+                            ->label('Herstelcodes')
+                            ->placeholder('-')
+                            ->columnSpanFull(),
+
+                    ]),
+
+                Section::make('Systeeminformatie')
+                    ->columns(2)
+                    ->schema([
+
+                        TextEntry::make('created_at')
+                            ->label('Aangemaakt op')
+                            ->dateTime()
+                            ->placeholder('-'),
+
+                        TextEntry::make('updated_at')
+                            ->label('Laatst bijgewerkt')
+                            ->dateTime()
+                            ->placeholder('-'),
+
+                    ]),
             ]);
     }
 }

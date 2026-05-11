@@ -24,6 +24,10 @@ class OrderResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'order_number';
 
+    protected static ?string $navigationLabel = 'Orders';
+    protected static ?string $modelLabel = 'Orders';
+    protected static string|null|\UnitEnum $navigationGroup = 'Verkoop';
+
     public static function form(Schema $schema): Schema
     {
         return OrderForm::configure($schema);

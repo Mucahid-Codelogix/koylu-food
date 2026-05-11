@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\Products\Schemas;
 
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class ProductForm
@@ -14,25 +16,73 @@ class ProductForm
     {
         return $schema
             ->components([
-                TextInput::make('name')
-                    ->required(),
-                Textarea::make('description')
-                    ->columnSpanFull(),
-                TextInput::make('unit')
-                    ->required(),
-                TextInput::make('price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('$'),
-                TextInput::make('min_quantity')
-                    ->required()
-                    ->numeric()
-                    ->default(1.0),
-                FileUpload::make('image_path')
-                    ->disk('public')
-                    ->image(),
-                Toggle::make('is_active')
-                    ->required(),
+
+                Section::make('Product informatie')
+                    ->description('Basisinformatie van het product')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Productnaam')
+                            ->required()
+                            ->maxLength(255),
+
+                        Select::make('supplier_id')
+                            ->label('Leverancier')
+                            ->relationship('supplier', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        TextInput::make('unit')
+                            ->label('Eenheid')
+                            ->required()
+                            ->placeholder('Bijv. kg, doos, stuk'),
+
+                        TextInput::make('min_quantity')
+                            ->label('Minimale afname')
+                            ->required()
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(1),
+
+                        TextInput::make('price')
+                            ->label('Verkoopprijs')
+                            ->required()
+                            ->numeric()
+                            ->prefix('€')
+                            ->step(0.01)
+                            ->minValue(0),
+
+                        Toggle::make('is_active')
+                            ->label('Actief')
+                            ->default(true)
+                            ->inline(false),
+
+                        Textarea::make('description')
+                            ->label('Omschrijving')
+                            ->rows(5)
+                            ->columnSpanFull(),
+
+                    ]),
+
+                Section::make('Product afbeelding')
+                    ->description('Upload een productfoto')
+                    ->schema([
+
+                        FileUpload::make('image_path')
+                            ->label('Afbeelding')
+                            ->disk('public')
+                            ->directory('products')
+                            ->image()
+                            ->imageEditor()
+                            ->imagePreviewHeight('250')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->columnSpanFull(),
+
+                    ]),
+
             ]);
     }
 }

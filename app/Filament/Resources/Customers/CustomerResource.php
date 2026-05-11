@@ -19,6 +19,9 @@ use Filament\Tables\Table;
 class CustomerResource extends Resource
 {
     protected static ?string $model = Customer::class;
+    protected static ?string $navigationLabel = 'Klanten';
+    protected static ?string $modelLabel = 'Klanten';
+    protected static string|null|\UnitEnum $navigationGroup = 'Verkoop';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
