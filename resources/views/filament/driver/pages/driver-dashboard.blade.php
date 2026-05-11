@@ -95,7 +95,7 @@
 
                 {{-- Actie knoppen --}}
                 <div class="space-y-2 pt-1">
-                    @if ($route->status === 'planned')
+                    @if ($route->status === \App\Enums\RouteStatus::PLANNED)
                         <button
                             wire:click="startLoading"
                             class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold py-3.5 rounded-xl transition"
@@ -104,7 +104,7 @@
                             Start laden
                         </button>
 
-                    @elseif ($route->status === 'in_progress' && !$route->loading_completed_at)
+                    @elseif ($route->status === \App\Enums\RouteStatus::IN_PROGRESS && !$route->loading_completed_at)
                         <div class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
                             <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                             <div>
@@ -120,7 +120,7 @@
                             Verder met laden
                         </button>
 
-                    @elseif ($route->status === 'in_progress' && $route->loading_completed_at)
+                    @elseif ($route->status === \App\Enums\RouteStatus::IN_PROGRESS && $route->loading_completed_at)
                         <div class="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                             <x-heroicon-o-check-circle class="w-5 h-5 text-green-500 shrink-0" />
                             <div>
