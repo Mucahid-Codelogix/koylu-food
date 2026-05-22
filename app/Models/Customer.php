@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProductPricingService;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,17 +25,19 @@ class Customer extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function productPrices()
+    public function productPrices(): HasMany
     {
         return $this->hasMany(CustomerProductPrice::class);
     }
 
-
-    public function priceForProduct(Product $product): float
+    public function pricePerKgForProduct(Product $product, ?ProductSupplier $productSupplier = null): float
     {
-        $customPrice = $this->productPrices
-            ->firstWhere('product_id', $product->id);
+        $offer = $productSupplier ?? $product->defaultProductSupplier();
 
-        return $customPrice ? $customPrice->price : $product->price;
+        if ($offer === null) {
+            return 0.0;
+        }
+
+        return app(ProductPricingService::class)->pricePerKg($this, $offer);
     }
 }

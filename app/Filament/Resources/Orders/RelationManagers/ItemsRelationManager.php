@@ -2,18 +2,14 @@
 
 namespace App\Filament\Resources\Orders\RelationManagers;
 
-use Filament\Actions\AssociateAction;
+use App\Filament\Resources\Orders\Schemas\OrderItemForm;
+use App\Filament\Resources\Orders\Schemas\OrderItemInfolist;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -23,51 +19,18 @@ class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
 
+    protected static ?string $title = 'Orderregels';
+
+    protected static ?string $modelLabel = 'orderregel';
+
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Select::make('product_id')
-                    ->relationship('product', 'name')
-                    ->required(),
-                TextInput::make('product_name')
-                    ->required(),
-                TextInput::make('unit')
-                    ->required(),
-                TextInput::make('quantity')
-                    ->required()
-                    ->numeric(),
-                TextInput::make('unit_price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('$'),
-                TextInput::make('subtotal')
-                    ->required()
-                    ->numeric(),
-            ]);
+        return OrderItemForm::configure($schema);
     }
 
     public function infolist(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                TextEntry::make('product.name')
-                    ->label('Product'),
-                TextEntry::make('product_name'),
-                TextEntry::make('unit'),
-                TextEntry::make('quantity')
-                    ->numeric(),
-                TextEntry::make('unit_price')
-                    ->money(),
-                TextEntry::make('subtotal')
-                    ->numeric(),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-            ]);
+        return OrderItemInfolist::configure($schema);
     }
 
     public function table(Table $table): Table
@@ -75,35 +38,32 @@ class ItemsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('product_name')
             ->columns([
-                TextColumn::make('product.name')
-                    ->searchable(),
                 TextColumn::make('product_name')
+                    ->label('Product')
                     ->searchable(),
-                TextColumn::make('unit')
-                    ->searchable(),
+                TextColumn::make('supplier_name')
+                    ->label('Leverancier')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('packaging_label')
+                    ->label('Verpakking')
+                    ->placeholder('—'),
                 TextColumn::make('quantity')
-                    ->numeric()
+                    ->label('Aantal')
+                    ->numeric(decimalPlaces: 2)
                     ->sortable(),
                 TextColumn::make('unit_price')
-                    ->money()
+                    ->label('Stukprijs')
+                    ->money('EUR')
                     ->sortable(),
                 TextColumn::make('subtotal')
-                    ->numeric()
+                    ->label('Subtotaal')
+                    ->money('EUR')
                     ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->label('Regel toevoegen'),
             ])
             ->recordActions([
                 ViewAction::make(),

@@ -1,0 +1,13 @@
+/**
+ * Köylü Halalfood — shared brand tokens (subtle use across panels, shop, PDF, mail).
+ */
+@theme {
+    --color-koylu-red: #E30613;
+    --color-koylu-red-50: #FDEAEB;
+    --color-koylu-red-100: #F9C5C8;
+    --color-koylu-red-600: #C40510;
+    --color-koylu-red-700: #A0040D;
+    --color-koylu-green: #007236;
+    --color-koylu-green-50: #E6F4EC;
+    --color-koylu-green-700: #005A2B;
+}

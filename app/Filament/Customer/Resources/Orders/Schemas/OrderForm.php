@@ -2,10 +2,12 @@
 
 namespace App\Filament\Customer\Resources\Orders\Schemas;
 
+use App\Enums\OrderStatus;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class OrderForm
@@ -14,24 +16,51 @@ class OrderForm
     {
         return $schema
             ->components([
-                TextInput::make('order_number')
-                    ->required(),
-                Select::make('customer_id')
-                    ->relationship('customer', 'id')
-                    ->required(),
-                TextInput::make('status')
-                    ->required()
-                    ->default('placed'),
-                DatePicker::make('order_date')
-                    ->required(),
-                DatePicker::make('delivery_date'),
-                TextInput::make('total_price')
-                    ->required()
-                    ->numeric()
-                    ->default(0.0)
-                    ->prefix('$'),
-                Textarea::make('notes')
-                    ->columnSpanFull(),
+                Section::make('Bestelling')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('order_number')
+                            ->label('Bestelnummer')
+                            ->disabled()
+                            ->dehydrated(),
+
+                        Select::make('status')
+                            ->label('Status')
+                            ->options(OrderStatus::class)
+                            ->disabled()
+                            ->dehydrated()
+                            ->native(false),
+
+                        DatePicker::make('order_date')
+                            ->label('Besteldatum')
+                            ->disabled()
+                            ->dehydrated()
+                            ->displayFormat('d-m-Y'),
+
+                        DatePicker::make('delivery_date')
+                            ->label('Leverdatum')
+                            ->disabled()
+                            ->dehydrated()
+                            ->displayFormat('d-m-Y'),
+
+                        TextInput::make('total_price')
+                            ->label('Totaalbedrag')
+                            ->disabled()
+                            ->dehydrated()
+                            ->prefix('€')
+                            ->numeric(),
+                    ]),
+
+                Section::make('Opmerkingen')
+                    ->schema([
+                        Textarea::make('notes')
+                            ->label('Notities')
+                            ->disabled()
+                            ->dehydrated()
+                            ->rows(3)
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 }

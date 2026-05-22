@@ -31,7 +31,7 @@ class VehicleInfolist
 
                     ]),
 
-                Section::make('Systeeminformatie')
+                Section::make('Systeem')
                     ->columns(2)
                     ->schema([
 

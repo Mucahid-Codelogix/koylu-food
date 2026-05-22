@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Factuur {{ $invoice->invoice_number }}</title>
+    @php
+        $brandRed = config('brand.colors.red');
+        $brandGreen = config('brand.colors.green');
+    @endphp
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -21,20 +25,19 @@
             justify-content: space-between;
             align-items: flex-start;
             padding-bottom: 24px;
-            border-bottom: 3px solid #f97316;
+            border-bottom: 3px solid {{ $brandRed }};
             margin-bottom: 32px;
         }
 
-        .brand-name {
-            font-size: 26px;
-            font-weight: 700;
-            color: #f97316;
-            letter-spacing: -0.5px;
+        .brand-logo {
+            height: 52px;
+            width: auto;
+            margin-bottom: 6px;
         }
 
         .brand-sub {
             font-size: 11px;
-            color: #9ca3af;
+            color: #6b7280;
             margin-top: 2px;
         }
 
@@ -50,7 +53,7 @@
 
         .doc-meta .number {
             font-size: 13px;
-            color: #f97316;
+            color: {{ $brandRed }};
             font-weight: 600;
             margin-top: 4px;
         }
@@ -71,8 +74,8 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            background: #dcfce7;
-            color: #16a34a;
+            background: #e6f4ec;
+            color: {{ $brandGreen }};
         }
 
         /* Info grid */
@@ -85,7 +88,7 @@
         .info-block {
             flex: 1;
             background: #f9fafb;
-            border-left: 3px solid #f97316;
+            border-left: 3px solid {{ $brandRed }};
             border-radius: 0 8px 8px 0;
             padding: 14px 16px;
         }
@@ -95,7 +98,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #f97316;
+            color: {{ $brandRed }};
             margin-bottom: 8px;
         }
 
@@ -128,7 +131,7 @@
             margin-bottom: 24px;
         }
 
-        thead tr { background: #f97316; }
+        thead tr { background: {{ $brandRed }}; }
 
         thead th {
             padding: 10px 12px;
@@ -187,7 +190,7 @@
             font-weight: 700;
             color: #111;
             border-bottom: none;
-            border-top: 2px solid #f97316;
+            border-top: 2px solid {{ $brandRed }};
             padding-top: 10px;
             margin-top: 4px;
         }
@@ -275,8 +278,8 @@
     {{-- Header --}}
     <div class="header">
         <div>
-            <div class="brand-name">Koylu Food</div>
-            <div class="brand-sub">Groothandel in vlees & levensmiddelen</div>
+            <img src="{{ public_path(config('brand.logo')) }}" alt="{{ config('brand.name') }}" class="brand-logo">
+            <div class="brand-sub">{{ config('brand.tagline') }}</div>
         </div>
         <div class="doc-meta">
             <h1>Factuur</h1>
@@ -412,7 +415,7 @@
 
     {{-- Footer --}}
     <div class="footer">
-        <p>Koylu Food · KvK: XXXXXXXX · BTW: NL XXXXXXXXX B01</p>
+        <p>{{ config('brand.name') }} · KvK: XXXXXXXX · BTW: NL XXXXXXXXX B01</p>
         <p>{{ $invoice->invoice_number }} · Aangemaakt op {{ now()->format('d-m-Y H:i') }}</p>
     </div>
 

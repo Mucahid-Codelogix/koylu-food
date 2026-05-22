@@ -12,17 +12,14 @@ class InvoiceService
 {
     public function createFromDelivery(Delivery $delivery): Invoice
     {
+        $delivery->load('items');
         $order = $delivery->order->load('items.product', 'customer');
 
-        // Voorkom dubbele facturen
         if ($order->invoice) {
-            return $order->invoice;
+            return $this->recalculateInvoice($order->invoice, $delivery, $order);
         }
 
-        $subtotal = $order->items->sum('subtotal');
-        $vatRate = $order->customer->is_vat_exempt ? 0 : 0.21;
-        $vat = round($subtotal * $vatRate, 2);
-        $total = $subtotal + $vat;
+        $amounts = $this->calculateAmountsFromDelivery($delivery, $order);
 
         return Invoice::create([
             'order_id' => $order->id,
@@ -30,10 +27,47 @@ class InvoiceService
             'status' => InvoiceStatus::CONCEPT,
             'invoice_date' => now(),
             'due_date' => now()->addDays(14),
-            'subtotal_amount' => $subtotal,
-            'vat_amount' => $vat,
-            'total_amount' => $total,
+            'subtotal_amount' => $amounts['subtotal'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
         ]);
+    }
+
+    protected function recalculateInvoice(Invoice $invoice, Delivery $delivery, $order): Invoice
+    {
+        $amounts = $this->calculateAmountsFromDelivery($delivery, $order);
+
+        $invoice->update([
+            'subtotal_amount' => $amounts['subtotal'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
+        ]);
+
+        return $invoice->fresh();
+    }
+
+    /**
+     * @return array{subtotal: float, vat: float, total: float}
+     */
+    public function calculateAmountsFromDelivery(Delivery $delivery, $order): array
+    {
+        $subtotal = 0.0;
+
+        foreach ($order->items as $item) {
+            $deliveryItem = $delivery->items->firstWhere('order_item_id', $item->id);
+            $deliveredQty = (float) ($deliveryItem?->delivered_quantity ?? 0);
+            $subtotal += round($deliveredQty * (float) $item->unit_price, 2);
+        }
+
+        $vatRate = $order->customer->is_vat_exempt ? 0 : 0.21;
+        $vat = round($subtotal * $vatRate, 2);
+        $total = round($subtotal + $vat, 2);
+
+        return [
+            'subtotal' => $subtotal,
+            'vat' => $vat,
+            'total' => $total,
+        ];
     }
 
     public function generatePdf(Invoice $invoice): void
@@ -70,7 +104,7 @@ class InvoiceService
         foreach ($order->items as $index => $item) {
             $deliveryItem = $order->delivery?->items->firstWhere('order_item_id', $item->id);
             $deliveredQty = $deliveryItem?->delivered_quantity ?? $item->quantity;
-            $lineTotal = $deliveredQty * $item->unit_price;
+            $lineTotal = round((float) $deliveredQty * (float) $item->unit_price, 2);
             $lineTax = round($lineTotal * ($vatRate / 100), 2);
 
             $lines .= '
@@ -119,7 +153,7 @@ class InvoiceService
 
     <cac:AccountingSupplierParty>
         <cac:Party>
-            <cac:PartyName><cbc:Name>Koylu Food</cbc:Name></cac:PartyName>
+            <cac:PartyName><cbc:Name>'.e(config('brand.name')).'</cbc:Name></cac:PartyName>
             <cac:PostalAddress>
                 <cac:Country><cbc:IdentificationCode>NL</cbc:IdentificationCode></cac:Country>
             </cac:PostalAddress>
@@ -128,7 +162,7 @@ class InvoiceService
                 <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
             </cac:PartyTaxScheme>
             <cac:PartyLegalEntity>
-                <cbc:RegistrationName>Koylu Food</cbc:RegistrationName>
+                <cbc:RegistrationName>'.e(config('brand.name')).'</cbc:RegistrationName>
                 <cbc:CompanyID>XXXXXXXX</cbc:CompanyID>
             </cac:PartyLegalEntity>
         </cac:Party>

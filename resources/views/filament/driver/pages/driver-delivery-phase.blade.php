@@ -12,18 +12,18 @@
     <div class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-4 space-y-2">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <x-heroicon-o-map-pin class="w-4 h-4 text-blue-500" />
+                <x-heroicon-o-map-pin class="w-4 h-4 text-primary-600" />
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
                     Stop {{ $current }} van {{ $total }}
                 </p>
             </div>
-            <span class="text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full">
+            <span class="text-xs font-semibold text-primary-700 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-full">
                 Leveringsfase
             </span>
         </div>
         <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2">
             <div
-                class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                class="bg-primary-600 h-2 rounded-full transition-all duration-300"
                 style="width: {{ ($current / $total) * 100 }}%"
             ></div>
         </div>
@@ -31,7 +31,7 @@
 
     {{-- Klant info --}}
     <div class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-        <div class="bg-blue-500 px-5 py-4 flex items-center justify-between">
+        <div class="bg-primary-600 px-5 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="bg-white/20 rounded-xl p-2">
                     <x-heroicon-o-building-storefront class="w-5 h-5 text-white" />
@@ -42,7 +42,7 @@
                 </div>
             </div>
             @if ($isDelivered)
-                <span class="bg-white text-blue-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                <span class="bg-white text-primary-700 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
                     <x-heroicon-s-check class="w-3 h-3" />
                     Geleverd
                 </span>
@@ -55,7 +55,7 @@
                 <span>{{ $customer->address }}, {{ $customer->postal_code }} {{ $customer->city }}</span>
             </div>
             @if ($customer->phone)
-                <a href="tel:{{ $customer->phone }}" class="flex items-center gap-2 text-sm text-blue-500 hover:text-blue-600 transition">
+                <a href="tel:{{ $customer->phone }}" class="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 transition">
                     <x-heroicon-o-phone class="w-4 h-4 shrink-0" />
                     {{ $customer->phone }}
                 </a>
@@ -257,7 +257,7 @@
                 @if (!$isLast)
                     <button
                         wire:click="nextStop"
-                        class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold transition"
+                        class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition"
                     >
                         Volgende stop
                         <x-heroicon-o-arrow-right class="w-4 h-4" />

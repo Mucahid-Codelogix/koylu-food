@@ -5,8 +5,8 @@ namespace App\Filament\Resources\Users\Schemas;
 use App\Enums\UserRole;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -64,7 +64,7 @@ class UserForm
 
                     ]),
 
-                Section::make('Two Factor Authenticatie')
+                Section::make('Tweefactorauthenticatie')
                     ->collapsed()
                     ->schema([
 

@@ -2,40 +2,51 @@
 
 namespace Database\Seeders;
 
+use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
+use App\Enums\RouteStopStatus;
 use App\Models\Delivery;
 use App\Models\DeliveryItem;
-use App\Models\Order;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\RouteStop;
 use Illuminate\Database\Seeder;
 
 class DeliverySeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Vult ontbrekende leveringen aan voor stops die al als geleverd staan
+     * (RouteSeeder maakt de meeste demo-leveringen al aan).
      */
     public function run(): void
     {
-        Order::where('status', 'routed')->each(function ($order) {
+        RouteStop::query()
+            ->where('status', RouteStopStatus::DELIVERED)
+            ->with(['order.items', 'order.customer'])
+            ->get()
+            ->each(function (RouteStop $stop): void {
+                $order = $stop->order;
 
-            $delivery = Delivery::create([
-                'order_id' => $order->id,
-                'delivered_at' => now(),
-                'receiver_name' => 'Test Receiver',
-                'status' => 'complete',
-            ]);
+                if (Delivery::query()->where('order_id', $order->id)->exists()) {
+                    return;
+                }
 
-            foreach ($order->items as $item) {
-
-                DeliveryItem::create([
-                    'delivery_id' => $delivery->id,
-                    'order_item_id' => $item->id,
-                    'product_id' => $item->product_id,
-                    'ordered_quantity' => $item->quantity,
-                    'delivered_quantity' => $item->quantity,
+                $delivery = Delivery::create([
+                    'order_id' => $order->id,
+                    'delivered_at' => now(),
+                    'receiver_name' => $order->customer->contact_name ?? $order->customer->company_name,
+                    'status' => DeliveryStatus::DELIVERED,
                 ]);
-            }
 
-            $order->update(['status' => 'delivered']);
-        });
+                foreach ($order->items as $item) {
+                    DeliveryItem::create([
+                        'delivery_id' => $delivery->id,
+                        'order_item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'ordered_quantity' => $item->quantity,
+                        'delivered_quantity' => $item->quantity,
+                    ]);
+                }
+
+                $order->update(['status' => OrderStatus::DELIVERED]);
+            });
     }
 }

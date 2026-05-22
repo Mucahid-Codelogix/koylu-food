@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Vehicle;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class VehicleSeeder extends Seeder
@@ -13,6 +12,6 @@ class VehicleSeeder extends Seeder
      */
     public function run(): void
     {
-        Vehicle::factory()->count(10)->create();
+        Vehicle::factory()->count(3)->create();
     }
 }

@@ -12,21 +12,38 @@ class OrderInfolist
     {
         return $schema
             ->components([
-                Section::make()
-                    ->columns()
-                    ->columnSpanFull()
+                Section::make('Bestelling')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->columns(2)
                     ->schema([
-                        TextEntry::make('order_number'),
-                        TextEntry::make('status'),
+                        TextEntry::make('order_number')
+                            ->label('Bestelnummer')
+                            ->weight('bold')
+                            ->copyable(),
+
+                        TextEntry::make('status')
+                            ->label('Status')
+                            ->badge(),
+
                         TextEntry::make('order_date')
-                            ->date(),
+                            ->label('Besteldatum')
+                            ->date('d-m-Y'),
+
                         TextEntry::make('delivery_date')
-                            ->date()
+                            ->label('Leverdatum')
+                            ->date('d-m-Y')
                             ->placeholder('-'),
+
                         TextEntry::make('total_price')
-                            ->money('Eur'),
+                            ->label('Totaalbedrag')
+                            ->money('EUR'),
+                    ]),
+
+                Section::make('Opmerkingen')
+                    ->schema([
                         TextEntry::make('notes')
-                            ->placeholder('-')
+                            ->label('Notities')
+                            ->placeholder('Geen opmerkingen')
                             ->columnSpanFull(),
                     ]),
             ]);

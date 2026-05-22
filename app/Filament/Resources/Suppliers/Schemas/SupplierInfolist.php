@@ -64,7 +64,7 @@ class SupplierInfolist
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('Systeem informatie')
+                Section::make('Systeem')
                     ->columns(2)
                     ->schema([
                         TextEntry::make('created_at')

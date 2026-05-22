@@ -3,8 +3,6 @@
 namespace App\Filament\Driver\Pages;
 
 use App\Enums\DeliveryStatus;
-use App\Enums\OrderStatus;
-use App\Enums\RouteStatus;
 use App\Enums\RouteStopStatus;
 use App\Models\CrateTransaction;
 use App\Models\Delivery;
@@ -12,8 +10,12 @@ use App\Models\DeliveryItem;
 use App\Models\Route;
 use App\Models\RouteStop;
 use App\Services\InvoiceService;
+use App\Services\OrderWorkflowService;
+use App\Services\RouteWorkflowService;
+use DomainException;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class DriverDeliveryPhase extends Page
 {
@@ -47,14 +49,27 @@ class DriverDeliveryPhase extends Page
             'routeStops.order.items.product',
         ])->findOrFail($routeId);
 
-        abort_unless($this->route->driver_id === auth()->id(), 403);
+        try {
+            app(RouteWorkflowService::class)->assertCanAccessDelivery($this->route, auth()->user());
+        } catch (AuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (DomainException $e) {
+            Notification::make()->title($e->getMessage())->warning()->send();
+            $this->redirect(DriverDashboard::getUrl());
 
-        // Haal fresh stops op direct uit DB
-        $firstPendingIndex = $this->route->routeStops
-            ->search(fn ($stop) => $stop->status !== RouteStopStatus::DELIVERED);
+            return;
+        }
 
-        $this->currentStopIndex = $firstPendingIndex !== false ? $firstPendingIndex : 0;
+        $firstPendingIndex = app(RouteWorkflowService::class)->firstPendingStopIndex($this->route);
 
+        if ($firstPendingIndex === false) {
+            app(RouteWorkflowService::class)->completeRouteIfReady($this->route);
+            $this->redirect(DriverDashboard::getUrl());
+
+            return;
+        }
+
+        $this->currentStopIndex = $firstPendingIndex;
         $this->initDeliveryData();
     }
 
@@ -79,7 +94,6 @@ class DriverDeliveryPhase extends Page
 
         $this->dispatch('clear-signature');
 
-        // Bestaande delivery ophalen indien aanwezig
         $existingDelivery = Delivery::with('items')
             ->where('order_id', $stop->order_id)
             ->first();
@@ -98,7 +112,6 @@ class DriverDeliveryPhase extends Page
             ];
         }
 
-        // Bestaande kratten ophalen
         $existingCrates = CrateTransaction::where('route_id', $this->route->id)
             ->where('customer_id', $stop->order->customer_id)
             ->latest()
@@ -109,7 +122,6 @@ class DriverDeliveryPhase extends Page
             $this->cratesReturned = $existingCrates->crates_returned;
         }
 
-        // Bestaande handtekening naam ophalen
         if ($existingDelivery) {
             $this->receiverName = $existingDelivery->receiver_name ?? '';
         }
@@ -118,8 +130,14 @@ class DriverDeliveryPhase extends Page
     public function saveDelivery(): void
     {
         $stop = $this->getCurrentStop();
+        $workflows = app(RouteWorkflowService::class);
 
-        // US-C7: Handtekening verplicht
+        if ($stop->status !== RouteStopStatus::PENDING) {
+            Notification::make()->title('Deze stop is al afgehandeld')->warning()->send();
+
+            return;
+        }
+
         if (empty($this->signature)) {
             Notification::make()
                 ->title('Handtekening ontbreekt')
@@ -129,21 +147,19 @@ class DriverDeliveryPhase extends Page
             return;
         }
 
-        // Sla handtekening op als bestand
         $signaturePath = $this->saveSignature($this->signature, $stop->id);
+        $deliveryStatus = $this->resolveDeliveryStatus();
 
-        // Maak delivery aan
         $delivery = Delivery::updateOrCreate(
             ['order_id' => $stop->order_id],
             [
                 'delivered_at' => now(),
                 'receiver_name' => $this->receiverName,
                 'signature_path' => $signaturePath,
-                'status' => DeliveryStatus::DELIVERED,
+                'status' => $deliveryStatus,
             ]
         );
 
-        // US-C4 & C5: Sla delivery items op
         foreach ($this->deliveryData as $orderItemId => $data) {
             DeliveryItem::updateOrCreate(
                 [
@@ -159,7 +175,6 @@ class DriverDeliveryPhase extends Page
             );
         }
 
-        // US-C6: Kratten registreren
         if ($this->cratesGiven > 0 || $this->cratesReturned > 0) {
             CrateTransaction::create([
                 'customer_id' => $stop->order->customer_id,
@@ -169,72 +184,105 @@ class DriverDeliveryPhase extends Page
             ]);
         }
 
-        // Update stop status
-        $stop->update(['status' => RouteStopStatus::DELIVERED]);
-        $stop->order->update(['status' => OrderStatus::DELIVERED]);
+        $workflows->markStopDelivered($stop);
 
-        app(InvoiceService::class)->createFromDelivery($delivery);
+        if ($deliveryStatus !== DeliveryStatus::FAILED) {
+            app(OrderWorkflowService::class)->markAsDelivered($stop->order);
+            app(InvoiceService::class)->createFromDelivery($delivery->fresh('items'));
+        }
 
         Notification::make()
             ->title('Levering opgeslagen!')
             ->success()
             ->send();
 
-        // US-C8: Naar volgende stop of afronden
-        $this->nextStop();
-    }
-
-    public function nextStop(): void
-    {
-        if ($this->currentStopIndex < $this->getTotalStops() - 1) {
-            $this->currentStopIndex++;
-            $this->deliveryData = [];
-            $this->receiverName = '';
-            $this->route->load([
-                'routeStops' => fn ($q) => $q->orderBy('stop_order'),
-                'routeStops.order.customer',
-                'routeStops.order.items.product',
-            ]);
-            $this->initDeliveryData();
-            $this->dispatch('stop-changed');
-        } else {
-            $this->route->update([
-                'status' => RouteStatus::COMPLETED,
-                'completed_at' => now(),
-            ]);
-            $this->redirect(DriverDashboard::getUrl());
-        }
+        $this->advanceToNextPendingOrComplete();
     }
 
     public function skipStop(): void
     {
-        if ($this->currentStopIndex < $this->getTotalStops() - 1) {
-            $this->currentStopIndex++;
-            $this->deliveryData = []; // ← eerst leegmaken
-            $this->route->load([
-                'routeStops' => fn ($q) => $q->orderBy('stop_order'),
-                'routeStops.order.customer',
-                'routeStops.order.items.product',
-            ]);
-            $this->initDeliveryData();
-            $this->dispatch('stop-changed');
+        $stop = $this->getCurrentStop();
+
+        if ($stop->status !== RouteStopStatus::PENDING) {
+            Notification::make()->title('Deze stop kan niet worden overgeslagen')->warning()->send();
+
+            return;
         }
+
+        app(RouteWorkflowService::class)->skipStop($stop);
+
+        Notification::make()
+            ->title('Stop overgeslagen')
+            ->success()
+            ->send();
+
+        $this->advanceToNextPendingOrComplete();
     }
 
     public function previousStop(): void
     {
         if ($this->currentStopIndex > 0) {
             $this->currentStopIndex--;
-            $this->deliveryData = [];
-            $this->receiverName = '';
-            $this->route->load([
-                'routeStops' => fn ($q) => $q->orderBy('stop_order'),
-                'routeStops.order.customer',
-                'routeStops.order.items.product',
-            ]);
-            $this->initDeliveryData();
-            $this->dispatch('stop-changed');
+            $this->reloadStopsAndInit();
         }
+    }
+
+    protected function advanceToNextPendingOrComplete(): void
+    {
+        $this->route->refresh();
+        $this->route->load([
+            'routeStops' => fn ($q) => $q->orderBy('stop_order'),
+            'routeStops.order.customer',
+            'routeStops.order.items.product',
+        ]);
+
+        $workflows = app(RouteWorkflowService::class);
+        $nextIndex = $workflows->firstPendingStopIndex($this->route);
+
+        if ($nextIndex === false) {
+            $workflows->completeRouteIfReady($this->route);
+            $this->redirect(DriverDashboard::getUrl());
+
+            return;
+        }
+
+        $this->currentStopIndex = $nextIndex;
+        $this->initDeliveryData();
+        $this->dispatch('stop-changed');
+    }
+
+    protected function reloadStopsAndInit(): void
+    {
+        $this->route->load([
+            'routeStops' => fn ($q) => $q->orderBy('stop_order'),
+            'routeStops.order.customer',
+            'routeStops.order.items.product',
+        ]);
+        $this->initDeliveryData();
+        $this->dispatch('stop-changed');
+    }
+
+    protected function resolveDeliveryStatus(): DeliveryStatus
+    {
+        $lines = collect($this->deliveryData);
+
+        $deliveredLines = $lines->filter(
+            fn (array $data): bool => ! $data['is_missed'] && (float) $data['delivered_quantity'] > 0
+        );
+
+        if ($deliveredLines->isEmpty()) {
+            return DeliveryStatus::FAILED;
+        }
+
+        $partial = $lines->contains(function (array $data): bool {
+            if ($data['is_missed']) {
+                return true;
+            }
+
+            return (float) $data['delivered_quantity'] < (float) $data['ordered_quantity'];
+        });
+
+        return $partial ? DeliveryStatus::PARTIAL : DeliveryStatus::DELIVERED;
     }
 
     private function saveSignature(string $base64, int $stopId): string

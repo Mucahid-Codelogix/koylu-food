@@ -49,7 +49,7 @@ class UserInfolist
 
                     ]),
 
-                Section::make('Two Factor Authenticatie')
+                Section::make('Tweefactorauthenticatie')
                     ->collapsed()
                     ->schema([
 
@@ -65,7 +65,7 @@ class UserInfolist
 
                     ]),
 
-                Section::make('Systeeminformatie')
+                Section::make('Systeem')
                     ->columns(2)
                     ->schema([
 

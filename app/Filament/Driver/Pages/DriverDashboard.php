@@ -4,6 +4,7 @@ namespace App\Filament\Driver\Pages;
 
 use App\Enums\RouteStatus;
 use App\Models\Route;
+use App\Services\RouteWorkflowService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -58,7 +59,7 @@ class DriverDashboard extends Page
             return;
         }
 
-        $this->route->update(['status' => RouteStatus::IN_PROGRESS, 'started_at' => now()]);
+        app(RouteWorkflowService::class)->startRoute($this->route);
 
         $this->redirect(
             DriverLoadingPhase::getUrl().'?routeId='.$this->route->id

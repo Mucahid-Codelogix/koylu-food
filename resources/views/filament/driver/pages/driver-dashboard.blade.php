@@ -14,20 +14,20 @@
         <div class="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
 
             {{-- Kaart header --}}
-            <div class="bg-orange-500 px-5 py-4 flex items-center justify-between">
+            <div class="bg-primary-500 px-5 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="bg-white/20 rounded-xl p-2">
                         <x-heroicon-o-map-pin class="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <p class="text-orange-100 text-xs font-medium">Route van vandaag</p>
+                        <p class="text-primary-100 text-xs font-medium">Route van vandaag</p>
                         <p class="text-white font-semibold">{{ $route->route_date->format('d-m-Y') }}</p>
                     </div>
                 </div>
                 <span @class([
                     'px-3 py-1 rounded-full text-xs font-semibold',
                     'bg-white/20 text-white'          => $route->status === 'planned',
-                    'bg-white text-orange-600'        => $route->status === 'in_progress',
+                    'bg-white text-primary-600'        => $route->status === 'in_progress',
                 ])>
                     {{ $route->status === 'planned' ? 'Gepland' : 'Onderweg' }}
                 </span>
@@ -61,11 +61,14 @@
                             {{-- Stop nummer --}}
                             <div @class([
                                 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                                'bg-green-100 text-green-700' => $stop->status === 'delivered',
-                                'bg-orange-100 text-orange-700' => $stop->status === 'pending',
+                                'bg-green-100 text-green-700' => $stop->status === \App\Enums\RouteStopStatus::DELIVERED,
+                                'bg-amber-100 text-amber-700' => $stop->status === \App\Enums\RouteStopStatus::SKIPPED,
+                                'bg-primary-100 text-primary-700' => $stop->status === \App\Enums\RouteStopStatus::PENDING,
                             ])>
-                                @if ($stop->status === 'delivered')
+                                @if ($stop->status === \App\Enums\RouteStopStatus::DELIVERED)
                                     <x-heroicon-s-check class="w-4 h-4" />
+                                @elseif ($stop->status === \App\Enums\RouteStopStatus::SKIPPED)
+                                    <x-heroicon-o-forward class="w-4 h-4" />
                                 @else
                                     {{ $stop->stop_order }}
                                 @endif
@@ -84,10 +87,11 @@
                             {{-- Status badge --}}
                             <span @class([
                                 'shrink-0 text-xs px-2 py-0.5 rounded-full font-medium',
-                                'bg-green-100 text-green-700' => $stop->status === 'delivered',
-                                'bg-gray-100 text-gray-500'   => $stop->status === 'pending',
+                                'bg-green-100 text-green-700' => $stop->status === \App\Enums\RouteStopStatus::DELIVERED,
+                                'bg-amber-100 text-amber-700' => $stop->status === \App\Enums\RouteStopStatus::SKIPPED,
+                                'bg-gray-100 text-gray-500'   => $stop->status === \App\Enums\RouteStopStatus::PENDING,
                             ])>
-                                {{ $stop->status === 'delivered' ? 'Geleverd' : 'Gepland' }}
+                                {{ $stop->status->getLabel() }}
                             </span>
                         </div>
                     @endforeach
@@ -98,7 +102,7 @@
                     @if ($route->status === \App\Enums\RouteStatus::PLANNED)
                         <button
                             wire:click="startLoading"
-                            class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold py-3.5 rounded-xl transition"
+                            class="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white font-semibold py-3.5 rounded-xl transition"
                         >
                             <x-heroicon-o-arrow-right-circle class="w-5 h-5" />
                             Start laden
@@ -114,7 +118,7 @@
                         </div>
                         <button
                             wire:click="continueLoading"
-                            class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold py-3.5 rounded-xl transition"
+                            class="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white font-semibold py-3.5 rounded-xl transition"
                         >
                             <x-heroicon-o-cube class="w-5 h-5" />
                             Verder met laden
@@ -130,7 +134,7 @@
                         </div>
                         <button
                             wire:click="continueDelivery"
-                            class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition"
+                            class="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3.5 rounded-xl transition"
                         >
                             <x-heroicon-o-truck class="w-5 h-5" />
                             Start leveren

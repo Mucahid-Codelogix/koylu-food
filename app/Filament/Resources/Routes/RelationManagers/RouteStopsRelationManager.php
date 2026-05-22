@@ -2,19 +2,21 @@
 
 namespace App\Filament\Resources\Routes\RelationManagers;
 
-use Filament\Actions\AssociateAction;
+use App\Enums\RouteStopStatus;
+use App\Models\Order;
+use App\Services\RouteWorkflowService;
+use DomainException;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -27,15 +29,41 @@ class RouteStopsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Select::make('order_id')
-                    ->relationship('order', 'id')
-                    ->required(),
-                TextInput::make('stop_order')
-                    ->required()
-                    ->numeric(),
-                TextInput::make('status')
-                    ->required()
-                    ->default('pending'),
+                Section::make('Stop toevoegen')
+                    ->description('Volgorde wordt automatisch bepaald. Sleep stops in de tabel om te herschikken.')
+                    ->schema([
+                        Select::make('order_id')
+                            ->label('Bestelling')
+                            ->searchable()
+                            ->options(
+                                fn (): array => Order::query()
+                                    ->placed()
+                                    ->notOnRoute()
+                                    ->with('customer')
+                                    ->orderByDesc('order_date')
+                                    ->get()
+                                    ->mapWithKeys(fn (Order $order) => [
+                                        $order->id => "{$order->order_number} — {$order->customer->company_name}",
+                                    ])
+                                    ->all()
+                            )
+                            ->required()
+                            ->native(false)
+                            ->visibleOn('create'),
+                    ]),
+
+                Section::make('Status')
+                    ->visibleOn('edit')
+                    ->schema([
+                        Select::make('status')
+                            ->label('Status')
+                            ->options(collect(RouteStopStatus::cases())->mapWithKeys(
+                                fn (RouteStopStatus $status) => [$status->value => $status->getLabel()]
+                            )->all())
+                            ->default(RouteStopStatus::PENDING->value)
+                            ->required()
+                            ->native(false),
+                    ]),
             ]);
     }
 
@@ -43,17 +71,44 @@ class RouteStopsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                TextEntry::make('order.id')
-                    ->label('Order'),
-                TextEntry::make('stop_order')
-                    ->numeric(),
-                TextEntry::make('status'),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
+                Section::make('Route stop')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('stop_order')
+                            ->label('Volgorde')
+                            ->numeric(),
+
+                        TextEntry::make('order.order_number')
+                            ->label('Bestelling')
+                            ->copyable(),
+
+                        TextEntry::make('order.customer.company_name')
+                            ->label('Klant')
+                            ->placeholder('-'),
+
+                        TextEntry::make('order.customer.city')
+                            ->label('Plaats')
+                            ->placeholder('-'),
+
+                        TextEntry::make('status')
+                            ->label('Status')
+                            ->badge(),
+                    ]),
+
+                Section::make('Systeem')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('created_at')
+                            ->label('Aangemaakt')
+                            ->dateTime('d-m-Y H:i')
+                            ->placeholder('-'),
+
+                        TextEntry::make('updated_at')
+                            ->label('Bijgewerkt')
+                            ->dateTime('d-m-Y H:i')
+                            ->placeholder('-'),
+                    ]),
             ]);
     }
 
@@ -64,24 +119,20 @@ class RouteStopsRelationManager extends RelationManager
             ->reorderable('stop_order')
             ->defaultSort('stop_order')
             ->columns([
-
                 TextColumn::make('order.order_number')
                     ->label('Order nummer')
                     ->searchable(),
-                TextColumn::make('order.customer.address')
-                    ->label('Adres')
-                    ->searchable(),
-                TextColumn::make('order.customer.postal_code')
-                    ->label('Stad')
+                TextColumn::make('order.customer.company_name')
+                    ->label('Klant')
                     ->searchable(),
                 TextColumn::make('order.customer.city')
-                    ->label('Stad')
+                    ->label('Plaats')
                     ->searchable(),
-                TextColumn::make('order.customer.country')
-                    ->label('Stad')
-                    ->searchable(),
+                TextColumn::make('order.status')
+                    ->label('Orderstatus')
+                    ->badge(),
                 TextColumn::make('status')
-                    ->searchable(),
+                    ->badge(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -95,7 +146,27 @@ class RouteStopsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->action(function (array $data): void {
+                        $route = $this->getOwnerRecord();
+                        $order = Order::query()->findOrFail($data['order_id']);
+
+                        try {
+                            app(RouteWorkflowService::class)->assignOrderToRoute($route, $order);
+                        } catch (DomainException $exception) {
+                            Notification::make()
+                                ->title($exception->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Stop toegevoegd')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->recordActions([
                 ViewAction::make(),

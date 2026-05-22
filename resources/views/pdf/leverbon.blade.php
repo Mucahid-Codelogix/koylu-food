@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leverbon {{ $delivery->order->order_number }}</title>
+    @php
+        $brandRed = config('brand.colors.red');
+        $brandGreen = config('brand.colors.green');
+    @endphp
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -25,13 +29,13 @@
             align-items: flex-start;
             margin-bottom: 40px;
             padding-bottom: 24px;
-            border-bottom: 2px solid #f97316;
+            border-bottom: 2px solid {{ $brandRed }};
         }
 
         .company-name {
             font-size: 22px;
             font-weight: 700;
-            color: #f97316;
+            color: {{ $brandRed }};
         }
 
         .company-sub {
@@ -119,7 +123,7 @@
         }
 
         thead tr {
-            background: #f97316;
+            background: {{ $brandRed }};
         }
 
         thead th {
@@ -169,7 +173,7 @@
             padding: 10px 14px;
             font-size: 12px;
             font-weight: 700;
-            border-top: 2px solid #f97316;
+            border-top: 2px solid {{ $brandRed }};
         }
 
         /* Handtekening */
@@ -223,7 +227,7 @@
     {{-- Header --}}
     <div class="header">
         <div>
-            <div class="company-name">Koylu Food</div>
+            <img src="{{ public_path(config('brand.logo')) }}" alt="{{ config('brand.name') }}" style="height: 48px; width: auto; margin-bottom: 4px;">
             <div class="company-sub">Leveringsbon</div>
         </div>
         <div class="doc-title">
@@ -321,7 +325,7 @@
 
     {{-- Pagina footer --}}
     <div class="page-footer">
-        Koylu Food · Leverbon {{ $delivery->order->order_number }} · Aangemaakt op {{ now()->format('d-m-Y H:i') }}
+        {{ config('brand.name') }} · Leverbon {{ $delivery->order->order_number }} · Aangemaakt op {{ now()->format('d-m-Y H:i') }}
     </div>
 
 </div>

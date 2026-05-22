@@ -3,8 +3,8 @@
     {{-- Leeg --}}
     @if ($invoices->isEmpty())
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-12 text-center">
-            <div class="bg-orange-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <x-heroicon-o-document-text class="w-8 h-8 text-orange-300" />
+            <div class="bg-primary-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <x-heroicon-o-document-text class="w-8 h-8 text-primary-300" />
             </div>
             <p class="font-semibold text-gray-700">Geen facturen gevonden</p>
             <p class="text-sm text-gray-400 mt-1">Facturen verschijnen hier na levering van uw bestelling.</p>
@@ -30,7 +30,7 @@
 
             <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Openstaand</p>
-                <p class="text-2xl font-bold text-amber-500 mt-1">{{ $sent }}</p>
+                <p class="text-2xl font-bold text-primary-500 mt-1">{{ $sent }}</p>
                 <p class="text-xs text-gray-400 mt-0.5">te betalen</p>
             </div>
 
@@ -42,7 +42,7 @@
 
             <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Totaalbedrag</p>
-                <p class="text-2xl font-bold text-orange-500 mt-1">€{{ number_format($totalAmount, 2, ',', '.') }}</p>
+                <p class="text-2xl font-bold text-primary-500 mt-1">€{{ number_format($totalAmount, 2, ',', '.') }}</p>
                 <p class="text-xs text-gray-400 mt-0.5">gefactureerd</p>
             </div>
         </div>
@@ -99,7 +99,7 @@
                                     <span @class([
                                         'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold',
                                         'bg-gray-100 text-gray-500'   => $invoice->status === 'concept',
-                                        'bg-amber-100 text-amber-700' => $invoice->status === 'sent',
+                                        'bg-primary-100 text-primary-700' => $invoice->status === 'sent',
                                         'bg-green-100 text-green-700' => $invoice->status === 'paid',
                                     ])>
                                         @if ($invoice->status === 'concept')
@@ -120,7 +120,7 @@
                                         <a
                                         href="{{ route('invoice.pdf', $invoice) }}"
                                         target="_blank"
-                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-600 text-xs font-semibold transition"
+                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-600 text-xs font-semibold transition"
                                         >
                                         <x-heroicon-o-document-arrow-down class="w-3.5 h-3.5" />
                                         PDF
@@ -163,7 +163,7 @@
                             <span @class([
                                 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold',
                                 'bg-gray-100 text-gray-500'   => $invoice->status === 'concept',
-                                'bg-amber-100 text-amber-700' => $invoice->status === 'sent',
+                                'bg-primary-100 text-primary-700' => $invoice->status === 'sent',
                                 'bg-green-100 text-green-700' => $invoice->status === 'paid',
                             ])>
                                 @if ($invoice->status === 'concept')
@@ -197,7 +197,7 @@
 
                                     href="{{ route('invoice.pdf', $invoice) }}"
                                     target="_blank"
-                                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold transition"
+                                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold transition"
                                     >
                                     <x-heroicon-o-document-arrow-down class="w-4 h-4" />
                                     PDF

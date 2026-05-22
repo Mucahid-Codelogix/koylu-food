@@ -1,4 +1,5 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../koylu-brand.css';
 
 @source '../../../../app/Filament/Driver/**/*';
 @source '../../../../resources/views/filament/driver/**/*';

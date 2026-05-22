@@ -2,10 +2,11 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Enums\ProductType;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -15,74 +16,69 @@ class ProductForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
-
-                Section::make('Product informatie')
-                    ->description('Basisinformatie van het product')
+                Section::make('Basisgegevens')
+                    ->description('Naam, type en zichtbaarheid. Verpakkingen en leveranciers beheer je in de tabbladen hieronder (na opslaan).')
+                    ->icon('heroicon-o-cube')
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')
                             ->label('Productnaam')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpanFull(),
 
-                        Select::make('supplier_id')
-                            ->label('Leverancier')
-                            ->relationship('supplier', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
-
-                        TextInput::make('unit')
-                            ->label('Eenheid')
+                        Select::make('product_type')
+                            ->label('Producttype')
+                            ->options(ProductType::class)
                             ->required()
-                            ->placeholder('Bijv. kg, doos, stuk'),
+                            ->native(false)
+                            ->live(),
 
-                        TextInput::make('min_quantity')
-                            ->label('Minimale afname')
+                        Toggle::make('allows_loading_substitute')
+                            ->label('Alternatief toestaan bij laden')
+                            ->helperText('Chauffeur/magazijn mag een andere gramvariant kiezen als de bestelde niet beschikbaar is')
+                            ->visible(fn ($get): bool => $get('product_type') === ProductType::WholeChicken->value)
+                            ->inline(false),
+
+                        TextInput::make('min_order_quantity')
+                            ->label('Standaard minimale afname')
                             ->required()
                             ->numeric()
                             ->default(1)
-                            ->minValue(1),
-
-                        TextInput::make('price')
-                            ->label('Verkoopprijs')
-                            ->required()
-                            ->numeric()
-                            ->prefix('€')
+                            ->minValue(0.01)
                             ->step(0.01)
-                            ->minValue(0),
+                            ->helperText('Geldt als er geen minimum per verpakking is ingesteld'),
 
                         Toggle::make('is_active')
-                            ->label('Actief')
+                            ->label('Zichtbaar in shop')
                             ->default(true)
                             ->inline(false),
 
                         Textarea::make('description')
                             ->label('Omschrijving')
-                            ->rows(5)
+                            ->rows(4)
                             ->columnSpanFull(),
-
                     ]),
 
-                Section::make('Product afbeelding')
-                    ->description('Upload een productfoto')
+                Section::make('Productfoto')
+                    ->description('Optionele afbeelding voor de webshop')
+                    ->icon('heroicon-o-photo')
+                    ->collapsed()
                     ->schema([
-
                         FileUpload::make('image_path')
                             ->label('Afbeelding')
                             ->disk('public')
                             ->directory('products')
                             ->image()
                             ->imageEditor()
-                            ->imagePreviewHeight('250')
+                            ->imagePreviewHeight('200')
                             ->downloadable()
                             ->openable()
                             ->preserveFilenames()
                             ->columnSpanFull(),
-
                     ]),
-
             ]);
     }
 }

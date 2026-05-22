@@ -1,5 +1,19 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../koylu-brand.css';
 
 @source '../../../../app/Filament/Customer/**/*';
 @source '../../../../resources/views/filament/customer/**/*';
-@source '../../../../resources/views/components/**/*';
+@source '../../../../resources/views/components/customer/**/*';
+
+/* Shop: toolbar onder Filament-topbar, geen dubbele paginatitel */
+.fi-shop-page .fi-page-header {
+    display: none;
+}
+
+.fi-shop-page .fi-main {
+    @apply !p-0;
+}
+
+.fi-shop-page .fi-page-content {
+    @apply gap-0;
+}

@@ -10,6 +10,11 @@ class ViewProduct extends ViewRecord
 {
     protected static string $resource = ProductResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return 'Bekijk het overzicht en beheer verpakkingen en leveranciers in de tabbladen.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

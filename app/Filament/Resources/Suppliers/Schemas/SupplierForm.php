@@ -13,22 +13,33 @@ class SupplierForm
     {
         return $schema
             ->components([
-                Section::make('Leverancier informatie')
-                    ->columnSpanFull()
-                    ->description('Basisgegevens van de leverancier')
+                Section::make('Bedrijfsgegevens')
+                    ->icon('heroicon-o-building-office')
                     ->columns(2)
                     ->schema([
-
                         TextInput::make('name')
                             ->label('Bedrijfsnaam')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpanFull(),
 
                         Toggle::make('is_active')
                             ->label('Actief')
                             ->default(true)
                             ->inline(false),
 
+                        TextInput::make('vat_number')
+                            ->label('BTW-nummer')
+                            ->maxLength(255),
+
+                        TextInput::make('kvk_number')
+                            ->label('KvK-nummer')
+                            ->maxLength(255),
+                    ]),
+
+                Section::make('Contactgegevens')
+                    ->columns(2)
+                    ->schema([
                         TextInput::make('contact_person')
                             ->label('Contactpersoon')
                             ->maxLength(255),
@@ -41,19 +52,16 @@ class SupplierForm
                         TextInput::make('email')
                             ->label('E-mailadres')
                             ->email()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                    ]),
 
-                        TextInput::make('vat_number')
-                            ->label('BTW nummer')
-                            ->maxLength(255),
-
-                        TextInput::make('kvk_number')
-                            ->label('KvK nummer')
-                            ->maxLength(255),
-
+                Section::make('Adres')
+                    ->schema([
                         TextInput::make('address')
-                            ->label('Adres'),
-
+                            ->label('Adres')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

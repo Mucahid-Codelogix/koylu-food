@@ -6,6 +6,9 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\Pages\ViewProduct;
+use App\Filament\Resources\Products\RelationManagers\GramVariantsRelationManager;
+use App\Filament\Resources\Products\RelationManagers\PackagingsRelationManager;
+use App\Filament\Resources\Products\RelationManagers\ProductSuppliersRelationManager;
 use App\Filament\Resources\Products\Schemas\ProductForm;
 use App\Filament\Resources\Products\Schemas\ProductInfolist;
 use App\Filament\Resources\Products\Tables\ProductsTable;
@@ -15,6 +18,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductResource extends Resource
 {
@@ -23,7 +27,11 @@ class ProductResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ShoppingCart;
 
     protected static ?string $navigationLabel = 'Producten';
-    protected static ?string $modelLabel = 'Producten';
+
+    protected static ?string $modelLabel = 'Product';
+
+    protected static ?string $pluralModelLabel = 'Producten';
+
     protected static string|null|\UnitEnum $navigationGroup = 'Assortiment';
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -46,8 +54,16 @@ class ProductResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            GramVariantsRelationManager::class,
+            PackagingsRelationManager::class,
+            ProductSuppliersRelationManager::class,
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withCount(['packagings', 'productSuppliers']);
     }
 
     public static function getPages(): array

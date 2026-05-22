@@ -93,6 +93,21 @@ class InvoiceInfolist
                             ->placeholder('Geen opmerkingen')
                             ->columnSpanFull(),
                     ]),
+
+                Section::make('Systeem')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('created_at')
+                            ->label('Aangemaakt')
+                            ->dateTime('d-m-Y H:i')
+                            ->placeholder('-'),
+
+                        TextEntry::make('updated_at')
+                            ->label('Bijgewerkt')
+                            ->dateTime('d-m-Y H:i')
+                            ->placeholder('-'),
+                    ]),
             ]);
     }
 }

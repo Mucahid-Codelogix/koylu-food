@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Models\Product;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -14,74 +15,92 @@ class ProductInfolist
     {
         return $schema
             ->components([
-                Section::make('Product informatie')
-                    ->columns(2)
+                Section::make('Overzicht')
+                    ->columns(3)
                     ->schema([
-
                         TextEntry::make('name')
                             ->label('Productnaam')
                             ->size('large')
-                            ->weight('bold'),
+                            ->weight('bold')
+                            ->columnSpan(2),
 
-                        TextEntry::make('supplier.name')
-                            ->label('Leverancier')
-                            ->placeholder('-')
+                        ImageEntry::make('image_path')
+                            ->label('Afbeelding')
+                            ->disk('public')
+                            // ->height(200)
+                            ->columnSpan(2)
+                            ->defaultImageUrl('https://placehold.co/400x400?text=Geen+foto'),
+
+                        TextEntry::make('product_type')
+                            ->label('Type')
                             ->badge(),
 
-                        TextEntry::make('unit')
-                            ->label('Eenheid')
-                            ->badge(),
-
-                        TextEntry::make('price')
-                            ->label('Verkoopprijs')
-                            ->money('EUR'),
-
-                        TextEntry::make('min_quantity')
-                            ->label('Minimale afname')
-                            ->numeric(),
+                        IconEntry::make('allows_loading_substitute')
+                            ->label('Alternatief bij laden')
+                            ->boolean()
+                            ->visible(fn (Product $record): bool => $record->isWholeChicken()),
 
                         IconEntry::make('is_active')
-                            ->label('Actief')
+                            ->label('Zichtbaar in shop')
                             ->boolean(),
+
+                        TextEntry::make('min_order_quantity')
+                            ->label('Standaard min. afname')
+                            ->numeric(decimalPlaces: 2),
+
+                        TextEntry::make('gram_variants_count')
+                            ->label('Gramvarianten')
+                            ->state(fn (Product $record): string => (string) $record->gramVariants()->where('is_active', true)->count())
+                            ->badge()
+                            ->color('info')
+                            ->visible(fn (Product $record): bool => $record->isWholeChicken()),
+
+                        TextEntry::make('packagings_count')
+                            ->label('Actieve verpakkingen')
+                            ->state(fn (Product $record): string => (string) $record->packagings()->where('is_active', true)->count())
+                            ->badge()
+                            ->color('info')
+                            ->visible(fn (Product $record): bool => ! $record->isWholeChicken()),
+
+                        TextEntry::make('suppliers_count')
+                            ->label('Actieve leveranciers')
+                            ->state(fn (Product $record): string => (string) $record->productSuppliers()->where('is_active', true)->count())
+                            ->badge()
+                            ->color('info'),
+
+                        TextEntry::make('default_packaging')
+                            ->label('Standaardverpakking')
+                            ->state(fn (Product $record): string => $record->defaultPackaging()?->displayLabel() ?? '—')
+                            ->columnSpan(2),
+
+                        TextEntry::make('default_supplier')
+                            ->label('Standaardleverancier')
+                            ->state(fn (Product $record): string => $record->defaultProductSupplier()?->supplier?->name ?? '—'),
+
+                        TextEntry::make('default_price_per_kg')
+                            ->label('Standaard prijs per kg')
+                            ->money('EUR')
+                            ->state(fn (Product $record): ?float => $record->defaultProductSupplier()?->price_per_kg),
 
                         TextEntry::make('description')
                             ->label('Omschrijving')
                             ->placeholder('Geen omschrijving')
                             ->prose()
                             ->columnSpanFull(),
-
                     ]),
 
-                Section::make('Product afbeelding')
-                    ->schema([
-
-                        ImageEntry::make('image_path')
-                            ->label('afbeelding')
-                            ->disk('public')
-                            ->height(300)
-                            ->square(false)
-                            ->defaultImageUrl(
-                                'https://placehold.co/800x500?text=Geen+afbeelding'
-                            ),
-
-                    ]),
-
-                Section::make('Systeem informatie')
+                Section::make('Systeem')
                     ->columns(2)
                     ->collapsed()
                     ->schema([
-
                         TextEntry::make('created_at')
-                            ->label('Aangemaakt op')
+                            ->label('Aangemaakt')
                             ->dateTime('d-m-Y H:i'),
 
                         TextEntry::make('updated_at')
-                            ->label('Laatst bijgewerkt')
+                            ->label('Bijgewerkt')
                             ->dateTime('d-m-Y H:i'),
-
                     ]),
-
             ]);
-
     }
 }
