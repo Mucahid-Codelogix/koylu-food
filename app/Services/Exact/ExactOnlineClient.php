@@ -49,6 +49,8 @@ class ExactOnlineClient
         } catch (ApiException $exception) {
             throw ExactApiException::fromPicqer($exception);
         }
+
+        $this->syncCurrentDivision($connection);
     }
 
     public function disconnect(): void
@@ -63,9 +65,14 @@ class ExactOnlineClient
     {
         return $this->call(function (Connection $connection): array {
             $me = (new Me($connection))->findWithSelect('CurrentDivision,FullName,Email');
+            $division = isset($me->CurrentDivision) ? (int) $me->CurrentDivision : null;
+
+            if ($division !== null) {
+                $this->persistDivision($division);
+            }
 
             return [
-                'division' => $me->CurrentDivision ?? null,
+                'division' => $division,
                 'full_name' => $me->FullName ?? null,
                 'email' => $me->Email ?? null,
             ];
@@ -168,6 +175,37 @@ class ExactOnlineClient
             'refresh_token' => (string) $connection->getRefreshToken(),
             'expires_at' => CarbonImmutable::createFromTimestamp($connection->getTokenExpires()),
             'division' => $connection->getDivision() ?? config('exact.division'),
+        ]);
+    }
+
+    private function syncCurrentDivision(Connection $connection): void
+    {
+        try {
+            $me = (new Me($connection))->findWithSelect('CurrentDivision');
+        } catch (ApiException $exception) {
+            return;
+        }
+
+        if (! isset($me->CurrentDivision)) {
+            return;
+        }
+
+        $this->persistDivision((int) $me->CurrentDivision);
+    }
+
+    private function persistDivision(int $division): void
+    {
+        $token = ExactToken::stored();
+
+        if ($token === null) {
+            return;
+        }
+
+        ExactToken::storeOrUpdate([
+            'access_token' => $token->access_token,
+            'refresh_token' => $token->refresh_token,
+            'expires_at' => $token->expires_at,
+            'division' => $division,
         ]);
     }
 

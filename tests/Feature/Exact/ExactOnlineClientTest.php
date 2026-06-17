@@ -63,3 +63,20 @@ it('encrypts tokens at rest', function () {
         ->and($raw->refresh_token)->not->toBe('secret-refresh')
         ->and($token->fresh()->access_token)->toBe('secret-access');
 });
+
+it('can persist a division on an existing token', function () {
+    ExactToken::storeOrUpdate([
+        'access_token' => 'access-token',
+        'refresh_token' => 'refresh-token',
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    ExactToken::storeOrUpdate([
+        'access_token' => 'access-token',
+        'refresh_token' => 'refresh-token',
+        'expires_at' => now()->addMinutes(10),
+        'division' => 424242,
+    ]);
+
+    expect(ExactToken::stored()?->division)->toBe(424242);
+});

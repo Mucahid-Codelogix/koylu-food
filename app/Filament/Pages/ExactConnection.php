@@ -33,8 +33,11 @@ class ExactConnection extends Page
 
     public ?string $configuredDivision = null;
 
+    public ?string $redirectUri = null;
+
     public function mount(): void
     {
+        $this->redirectUri = config('exact.redirect_uri');
         $this->refreshStatus();
 
         if (session()->pull('exact_oauth_success')) {
@@ -57,6 +60,8 @@ class ExactConnection extends Page
     {
         try {
             $result = app(ExactOnlineClient::class)->testConnection();
+
+            $this->refreshStatus();
 
             Notification::make()
                 ->title('Verbinding OK')

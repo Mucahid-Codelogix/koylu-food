@@ -20,7 +20,15 @@
                 @endif
             </div>
 
-            <dl class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <dl class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 sm:col-span-2 xl:col-span-4">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Callback URI (Exact App Center)</dt>
+                    <dd class="mt-1 text-sm font-mono font-semibold text-gray-900 dark:text-white break-all">{{ $redirectUri ?? '—' }}</dd>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Deze URL moet <strong>exact</strong> geregistreerd staan bij je Exact-app (App Center → Callback URL).
+                    </p>
+                </div>
+
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
                     <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Administratie (config)</dt>
                     <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $configuredDivision ?? '—' }}</dd>
@@ -29,6 +37,11 @@
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
                     <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Administratie (token)</dt>
                     <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $division ?? '—' }}</dd>
+                    @if ($isConnected && blank($division))
+                        <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                            Klik op <strong>Verbinding testen</strong> om het division-nummer op te halen.
+                        </p>
+                    @endif
                 </div>
 
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">

@@ -6,7 +6,7 @@ return [
 
     'client_secret' => env('EXACT_CLIENT_SECRET'),
 
-    'redirect_uri' => env('EXACT_REDIRECT_URI'),
+    'redirect_uri' => env('EXACT_REDIRECT_URI') ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/exact/oauth/callback',
 
     'division' => env('EXACT_DIVISION') ? (int) env('EXACT_DIVISION') : null,
 
