@@ -18,6 +18,9 @@ it('calculates invoice amounts from delivered quantities', function () {
     $item = OrderItem::factory()->create([
         'order_id' => $order->id,
         'quantity' => 2,
+        'box_weight_kg' => 5,
+        'price_per_kg' => 10,
+        'vat_rate' => 21,
         'unit_price' => 50,
         'subtotal' => 100,
     ]);

@@ -171,7 +171,7 @@
 
         /* Totalen */
         .totals {
-            width: 240px;
+            width: 280px;
             margin-left: auto;
             margin-bottom: 32px;
         }
@@ -321,36 +321,30 @@
         <thead>
         <tr>
             <th style="width: 40%">Omschrijving</th>
-            <th>Eenheid</th>
-            <th class="right">Besteld</th>
-            <th class="right">Geleverd</th>
-            <th class="right">Stukprijs</th>
+            <th class="right">Geleverd (kg)</th>
+            <th class="right">Prijs/kg</th>
             <th class="right">Bedrag</th>
         </tr>
         </thead>
         <tbody>
-        @foreach ($invoice->order->items as $item)
+        @foreach ($lines as $line)
             @php
-                $deliveryItem = $invoice->order->delivery?->items
-                    ->firstWhere('order_item_id', $item->id);
-                $deliveredQty = $deliveryItem?->delivered_quantity ?? $item->quantity;
-                $isMissed     = $deliveredQty == 0 && $deliveryItem?->missed_reason;
+                $orderedKg = round($line['ordered_quantity'] * $line['box_weight_kg'], 3);
             @endphp
             <tr>
                 <td>
-                    {{ $item->product_name }}
-                    @if ($isMissed)
+                    {{ $line['product_name'] }}
+                    <span class="deviation" style="color: #6b7280;">{{ $line['unit'] }}</span>
+                    @if ($line['is_missed'])
                         <span class="missed">— niet geleverd</span>
-                        <span class="deviation">{{ $deliveryItem->missed_reason }}</span>
-                    @elseif ($deliveredQty != $item->quantity)
-                        <span class="deviation">Afwijking: {{ $item->quantity - $deliveredQty }} {{ $item->unit }}</span>
+                        <span class="deviation">{{ $line['missed_reason'] }}</span>
+                    @elseif ($line['delivered_kg'] != $orderedKg)
+                        <span class="deviation">Afwijking: {{ rtrim(rtrim(number_format($orderedKg - $line['delivered_kg'], 3, ',', '.'), '0'), ',') }} kg</span>
                     @endif
                 </td>
-                <td>{{ $item->unit }}</td>
-                <td class="right">{{ $item->quantity }}</td>
-                <td class="right">{{ $deliveredQty }}</td>
-                <td class="right">€ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
-                <td class="right">€ {{ number_format($deliveredQty * $item->unit_price, 2, ',', '.') }}</td>
+                <td class="right">{{ rtrim(rtrim(number_format($line['delivered_kg'], 3, ',', '.'), '0'), ',') }}</td>
+                <td class="right">€ {{ number_format($line['price_per_kg'], 4, ',', '.') }}</td>
+                <td class="right">€ {{ number_format($line['line_subtotal'], 2, ',', '.') }}</td>
             </tr>
         @endforeach
         </tbody>
@@ -362,17 +356,18 @@
             <span>Subtotaal</span>
             <span>€ {{ number_format($invoice->subtotal_amount, 2, ',', '.') }}</span>
         </div>
-        @if ($invoice->order->customer->is_vat_exempt)
+        @foreach ($vatByRate as $vatGroup)
             <div class="totals-row">
-                <span>BTW (0% — vrijgesteld)</span>
-                <span>€ 0,00</span>
+                <span>
+                    @if ($vatGroup['rate'] == 0)
+                        BTW (0% — vrijgesteld)
+                    @else
+                        BTW ({{ number_format($vatGroup['rate'], 0, ',', '.') }}%)
+                    @endif
+                </span>
+                <span>€ {{ number_format($vatGroup['vat_amount'], 2, ',', '.') }}</span>
             </div>
-        @else
-            <div class="totals-row">
-                <span>BTW (21%)</span>
-                <span>€ {{ number_format($invoice->vat_amount, 2, ',', '.') }}</span>
-            </div>
-        @endif
+        @endforeach
         <div class="totals-row total">
             <span>Totaal</span>
             <span>€ {{ number_format($invoice->total_amount, 2, ',', '.') }}</span>

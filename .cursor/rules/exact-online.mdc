@@ -1,0 +1,41 @@
+---
+description: Werkafspraken voor de Exact Online integratie (facturatie, klant-/artikel-sync). Lees altijd EXACT_INTEGRATION_PLAN.md mee.
+globs: app/Services/**,app/Jobs/**,app/Filament/**,app/Observers/**,app/Models/**,database/migrations/**,resources/views/pdf/**,tests/**
+alwaysApply: false
+---
+
+# Exact Online integratie — regels voor Cursor
+
+Volg `EXACT_INTEGRATION_PLAN.md` (app-root) als bron van waarheid. Bouw fase voor fase in de aangegeven volgorde. Begin bij Fase A.
+
+## Vastgestelde keuzes (niet heroverwegen zonder overleg)
+- Eén artikel **per product** in Exact (model A) → `products.exact_article_code`.
+- Factuurregels **per kg**: `delivered_kg × price_per_kg`. `delivered_kg = delivered_quantity × order_items.box_weight_kg`.
+- BTW **per product**: laag 9% / hoog 21% (`products.vat_category`); klant `is_vat_exempt` → 0%. Snapshot het tarief op `order_items.vat_rate`.
+- Factuur wordt **pas na admin-goedkeuring** geboekt; niet automatisch na levering.
+- **Exact is leidend** voor het factuurnummer → terugschrijven in `invoices.exact_document_number` en op PDF/UBL tonen.
+- Creditnota's blijven **handmatig** in Exact. Leverancier staat **niet** op de klantfactuur.
+
+## Architectuur
+- Alle Exact-code onder `app/Services/Exact/` (`ExactOnlineClient`, `Exact*Mapper`, `ExactApiException`).
+- Externe calls via queue-jobs in `app/Jobs/` (`ShouldQueue`, `$tries`, `backoff()`). Queue-driver = `database`.
+- Bedragen/regels **uitsluitend** via `App\Services\InvoiceLineCalculator`. Nergens opnieuw rekenen (record, PDF, UBL én Exact gebruiken dezelfde bron).
+
+## Verplichte werkwijze
+- **Laravel Boost MCP** gebruiken: `search-docs` vóór codewijzigingen; `database-schema` vóór migraties; `tinker`/`database-query` voor inspectie.
+- Bestanden maken via `php artisan make:*` (`--no-interaction`). Migraties via artisan.
+- Volg bestaande conventies van sibling-bestanden. PHP 8.4: constructor property promotion, expliciete return types/typehints, curly braces overal, PHPDoc array shapes.
+- **Snapshots**: leg prijs én btw-tarief vast op `order_items` bij bestellen (`OrderItemSnapshotBuilder`) zodat latere wijzigingen historische facturen niet raken.
+- **Idempotentie**: factuur-push checkt `exact_invoice_id` + `Cache::lock("exact-invoice-{id}")`. Nooit blind opnieuw boeken.
+- **Tokens**: versleuteld opslaan; proactief refreshen (Exact-token ~10 min geldig).
+
+## Tests (Pest) — verplicht per fase
+- Nieuwe test: `php artisan make:test --pest {Naam}`. Draaien: `php artisan test --compact`.
+- Exact-jobs/mappers testen met een **gemockte** `ExactOnlineClient` — nooit live API-calls in tests.
+- Borg dat record = PDF = UBL op de cent, inclusief gemengde BTW (9% + 21%), btw-vrij en deellevering. Breid `tests/Feature/InvoiceConsistencyTest.php` uit, verwijder bestaande tests niet zonder overleg.
+
+## Afronden
+- `vendor/bin/pint --dirty --format agent` draaien na PHP-wijzigingen.
+- Geen documentatie- of README-bestanden aanmaken tenzij gevraagd.
+- Dependencies (zoals `picqer/exact-php-client`) niet toevoegen zonder akkoord.
+- Houd scope strikt bij de huidige fase; geen ongevraagde extra features.

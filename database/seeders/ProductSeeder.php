@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\PackagingType;
 use App\Enums\ProductType;
+use App\Enums\VatCategory;
 use App\Models\Product;
 use App\Models\ProductGramVariant;
 use App\Models\ProductPackaging;
@@ -37,8 +38,10 @@ class ProductSeeder extends Seeder
                 'product_type' => ProductType::Standard,
                 'min_order_quantity' => 1,
                 'is_active' => true,
+                'vat_category' => VatCategory::High,
             ],
         );
+        $kipfilet->update(['vat_category' => VatCategory::High]);
 
         ProductPackaging::query()->firstOrCreate(
             ['product_id' => $kipfilet->id, 'packaging_type' => PackagingType::Box, 'weight_kg' => 10],
@@ -70,8 +73,10 @@ class ProductSeeder extends Seeder
                 'allows_loading_substitute' => true,
                 'min_order_quantity' => 1,
                 'is_active' => true,
+                'vat_category' => VatCategory::High,
             ],
         );
+        $heleKip->update(['vat_category' => VatCategory::High]);
 
         $gramVariants = [
             ['weight_grams' => 750, 'pieces_per_box' => 12, 'box_weight_kg' => 10.5, 'is_default' => true],
@@ -106,13 +111,13 @@ class ProductSeeder extends Seeder
     protected function seedOtherStandardProducts(Supplier $supplier): void
     {
         $otherProducts = [
-            ['name' => 'Kippendijen', 'price_per_kg' => 7.20, 'packaging' => PackagingType::Box, 'weight_kg' => 10],
-            ['name' => 'Kippenvleugels', 'price_per_kg' => 5.50, 'packaging' => PackagingType::Box, 'weight_kg' => 10],
-            ['name' => 'Kippenpoten', 'price_per_kg' => 4.80, 'packaging' => PackagingType::Box, 'weight_kg' => 10],
-            ['name' => 'Kipgehakt', 'price_per_kg' => 6.90, 'packaging' => PackagingType::Tray, 'weight_kg' => 1.5],
-            ['name' => 'Kipshoarma', 'price_per_kg' => 8.40, 'packaging' => PackagingType::Bag, 'weight_kg' => 2.5],
-            ['name' => 'Kipblokjes', 'price_per_kg' => 9.20, 'packaging' => PackagingType::Box, 'weight_kg' => 10],
-            ['name' => 'Kippenlever', 'price_per_kg' => 3.60, 'packaging' => PackagingType::Box, 'weight_kg' => 10],
+            ['name' => 'Kippendijen', 'price_per_kg' => 7.20, 'packaging' => PackagingType::Box, 'weight_kg' => 10, 'vat_category' => VatCategory::High],
+            ['name' => 'Kippenvleugels', 'price_per_kg' => 5.50, 'packaging' => PackagingType::Box, 'weight_kg' => 10, 'vat_category' => VatCategory::High],
+            ['name' => 'Kippenpoten', 'price_per_kg' => 4.80, 'packaging' => PackagingType::Box, 'weight_kg' => 10, 'vat_category' => VatCategory::High],
+            ['name' => 'Kipgehakt', 'price_per_kg' => 6.90, 'packaging' => PackagingType::Tray, 'weight_kg' => 1.5, 'vat_category' => VatCategory::High],
+            ['name' => 'Kipshoarma', 'price_per_kg' => 8.40, 'packaging' => PackagingType::Bag, 'weight_kg' => 2.5, 'vat_category' => VatCategory::High],
+            ['name' => 'Kipblokjes', 'price_per_kg' => 9.20, 'packaging' => PackagingType::Box, 'weight_kg' => 10, 'vat_category' => VatCategory::High],
+            ['name' => 'Kippenlever', 'price_per_kg' => 3.60, 'packaging' => PackagingType::Box, 'weight_kg' => 10, 'vat_category' => VatCategory::Low],
         ];
 
         foreach ($otherProducts as $index => $data) {
@@ -123,8 +128,10 @@ class ProductSeeder extends Seeder
                     'product_type' => ProductType::Standard,
                     'min_order_quantity' => 1,
                     'is_active' => true,
+                    'vat_category' => $data['vat_category'],
                 ],
             );
+            $product->update(['vat_category' => $data['vat_category']]);
 
             ProductPackaging::query()->firstOrCreate(
                 [

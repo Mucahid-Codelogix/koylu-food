@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProductType;
+use App\Enums\VatCategory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,7 @@ class Product extends Model
         'min_order_quantity',
         'image_path',
         'is_active',
+        'vat_category',
     ];
 
     /**
@@ -34,6 +36,7 @@ class Product extends Model
             'allows_loading_substitute' => 'boolean',
             'min_order_quantity' => 'decimal:2',
             'is_active' => 'boolean',
+            'vat_category' => VatCategory::class,
         ];
     }
 

@@ -18,6 +18,11 @@ class DatabaseSeeder extends Seeder
      * | Chauffeur  | driver4@koylu.test     | Route vandaag: deels geleverd + substitutie hele kip |
      * | Klant      | customer1@koylu.test   | Winkel, bestellingen (etc. customer7)  |
      *
+     * Factuur-demo’s (concept, Fase A): zoek op DEMO-INV-PARTIAL / MIXED / VRIJ in admin → Facturen.
+     * | Klant      | demo-factuur-deel@koylu.test   | Deellevering, 21% btw (78,53 totaal)   |
+     * | Klant      | demo-factuur-mixed@koylu.test  | Gemengde btw 9% + 21% (169,50 totaal)  |
+     * | Klant      | demo-factuur-vrij@koylu.test   | Btw-vrij buitenlandse klant (64,90)    |
+     *
      * Nieuwe bestellingen (status placed, niet op route) staan op het admin-dashboard.
      * Afgeronde route + factuur: gisteren op driver@koylu.test (DEMO-DONE).
      * Toekomstige route: morgen op driver2@koylu.test (DEMO-FUTURE).
@@ -34,6 +39,7 @@ class DatabaseSeeder extends Seeder
             OrderSeeder::class,
             RouteSeeder::class,
             DeliverySeeder::class,
+            InvoiceDemoScenarioSeeder::class,
             InvoiceSeeder::class,
         ]);
     }

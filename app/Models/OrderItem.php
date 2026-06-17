@@ -25,6 +25,7 @@ class OrderItem extends Model
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'subtotal' => 'decimal:2',
+            'vat_rate' => 'decimal:2',
             'box_weight_kg' => 'decimal:3',
             'price_per_kg' => 'decimal:4',
             'ordered_pieces' => 'decimal:2',

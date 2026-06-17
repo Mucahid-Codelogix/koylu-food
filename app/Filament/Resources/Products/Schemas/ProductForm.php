@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Schemas;
 
 use App\Enums\ProductType;
+use App\Enums\VatCategory;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -55,6 +56,14 @@ class ProductForm
                             ->label('Zichtbaar in shop')
                             ->default(true)
                             ->inline(false),
+
+                        Select::make('vat_category')
+                            ->label('BTW-categorie')
+                            ->options(VatCategory::class)
+                            ->default(VatCategory::High)
+                            ->required()
+                            ->native(false)
+                            ->helperText('Bepaalt het btw-tarief op facturen voor nieuwe bestellingen (9% of 21%).'),
 
                         Textarea::make('description')
                             ->label('Omschrijving')

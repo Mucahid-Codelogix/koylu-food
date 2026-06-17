@@ -35,6 +35,10 @@ class ProductInfolist
                             ->label('Type')
                             ->badge(),
 
+                        TextEntry::make('vat_category')
+                            ->label('BTW-categorie')
+                            ->badge(),
+
                         IconEntry::make('allows_loading_substitute')
                             ->label('Alternatief bij laden')
                             ->boolean()

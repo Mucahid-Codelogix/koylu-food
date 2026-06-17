@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ProductType;
+use App\Enums\VatCategory;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductGramVariant;
@@ -49,6 +50,7 @@ class OrderItemSnapshotBuilder
             'ordered_total_weight_kg' => $totalWeightKg,
             'unit_price' => $unitPrice,
             'subtotal' => $this->pricing->lineSubtotal($customer, $productSupplier, $packaging, $boxQuantity),
+            'vat_rate' => $this->resolveVatRate($product, $customer),
         ];
     }
 
@@ -88,6 +90,18 @@ class OrderItemSnapshotBuilder
             'ordered_total_weight_kg' => $totalWeightKg,
             'unit_price' => $unitPrice,
             'subtotal' => $this->pricing->lineSubtotalForGramVariant($customer, $productSupplier, $gramVariant, $boxQuantity),
+            'vat_rate' => $this->resolveVatRate($product, $customer),
         ];
+    }
+
+    protected function resolveVatRate(Product $product, ?Customer $customer): float
+    {
+        if ($customer?->is_vat_exempt) {
+            return 0.0;
+        }
+
+        $vatCategory = $product->vat_category ?? VatCategory::High;
+
+        return $vatCategory->rate();
     }
 }

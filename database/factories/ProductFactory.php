@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ProductType;
+use App\Enums\VatCategory;
 use App\Models\Product;
 use App\Models\ProductGramVariant;
 use App\Models\ProductPackaging;
@@ -28,6 +29,7 @@ class ProductFactory extends Factory
             'allows_loading_substitute' => false,
             'min_order_quantity' => 1,
             'is_active' => true,
+            'vat_category' => VatCategory::High,
         ];
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Invoices\Schemas;
 
+use App\Enums\InvoiceStatus;
+use App\Models\Invoice;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -33,12 +35,16 @@ class InvoiceInfolist
                             ->label('Vervaldatum')
                             ->date('d-m-Y')
                             ->placeholder('-')
-                            ->color(fn ($record) => $record->status !== 'paid' && $record->due_date?->isPast()
+                            ->color(fn (Invoice $record) => $record->status !== InvoiceStatus::PAID && $record->due_date?->isPast()
                                 ? 'danger' : null
                             ),
 
                         TextEntry::make('order.customer.company_name')
                             ->label('Klant'),
+
+                        TextEntry::make('order.order_number')
+                            ->label('Ordernummer')
+                            ->copyable(),
 
                         TextEntry::make('sent_at')
                             ->label('Verzonden op')
@@ -47,15 +53,15 @@ class InvoiceInfolist
                     ]),
 
                 Section::make('Bedragen')
-                    ->columns(3)
                     ->schema([
                         TextEntry::make('subtotal_amount')
                             ->label('Subtotaal')
                             ->money('EUR'),
 
-                        TextEntry::make('vat_amount')
-                            ->label('BTW (21%)')
-                            ->money('EUR'),
+                        TextEntry::make('vat_breakdown')
+                            ->label('BTW')
+                            ->html()
+                            ->state(fn (Invoice $record): string => $record->formattedVatBreakdown()),
 
                         TextEntry::make('total_amount')
                             ->label('Totaal')
@@ -91,6 +97,11 @@ class InvoiceInfolist
                         TextEntry::make('notes')
                             ->label('Opmerkingen')
                             ->placeholder('Geen opmerkingen')
+                            ->columnSpanFull(),
+
+                        TextEntry::make('order.notes')
+                            ->label('Ordernotitie')
+                            ->placeholder('-')
                             ->columnSpanFull(),
                     ]),
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Enums\InvoiceStatus;
+use App\Models\Invoice;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -52,8 +53,7 @@ class InvoiceForm
                     ]),
 
                 Section::make('Bedragen')
-                    ->description('Bedragen worden automatisch berekend op basis van de bestelling.')
-                    ->columns(3)
+                    ->description('Bedragen worden automatisch berekend op basis van de levering.')
                     ->schema([
                         TextInput::make('subtotal_amount')
                             ->label('Subtotaal')
@@ -62,12 +62,32 @@ class InvoiceForm
                             ->disabled()
                             ->dehydrated(),
 
-                        TextInput::make('vat_amount')
-                            ->label('BTW (21%)')
-                            ->prefix('€')
-                            ->numeric()
+                        Textarea::make('vat_breakdown_display')
+                            ->label('BTW')
                             ->disabled()
-                            ->dehydrated(),
+                            ->dehydrated(false)
+                            ->rows(fn (?Invoice $record): int => max(1, count($record?->vatByRate() ?? [])))
+                            ->afterStateHydrated(function (Textarea $component, ?Invoice $record): void {
+                                if (! $record) {
+                                    return;
+                                }
+
+                                $component->state(
+                                    collect($record->vatByRate())
+                                        ->map(function (array $group): string {
+                                            $label = $group['rate'] == 0.0
+                                                ? 'BTW (0% — vrijgesteld)'
+                                                : 'BTW ('.number_format($group['rate'], 0, ',', '.').'%)';
+
+                                            return sprintf(
+                                                '%s: € %s',
+                                                $label,
+                                                number_format($group['vat_amount'], 2, ',', '.'),
+                                            );
+                                        })
+                                        ->implode(PHP_EOL),
+                                );
+                            }),
 
                         TextInput::make('total_amount')
                             ->label('Totaal')

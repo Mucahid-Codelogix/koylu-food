@@ -23,6 +23,9 @@ class ProductsTable
                 TextColumn::make('product_type')
                     ->label('Type')
                     ->badge(),
+                TextColumn::make('vat_category')
+                    ->label('BTW')
+                    ->badge(),
                 TextColumn::make('packagings_count')
                     ->label('Verpakkingen')
                     ->counts('packagings'),
