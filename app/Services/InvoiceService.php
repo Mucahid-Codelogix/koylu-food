@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Enums\InvoiceStatus;
 use App\Models\Delivery;
 use App\Models\Invoice;
+use App\Support\UploadStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
 {
@@ -83,8 +83,8 @@ class InvoiceService
         ])
             ->setPaper('a4', 'portrait');
 
-        $path = "invoices/pdf/{$invoice->invoice_number}.pdf";
-        Storage::disk('public')->put($path, $pdf->output());
+        $path = UploadStorage::directory('invoices/pdf')."/{$invoice->invoice_number}.pdf";
+        UploadStorage::disk()->put($path, $pdf->output());
 
         $invoice->update(['pdf_path' => $path]);
     }
@@ -103,8 +103,8 @@ class InvoiceService
 
         $xml = $this->ublBuilder->build($invoice, $lines, $totals['vat_by_rate']);
 
-        $path = "invoices/ubl/{$invoice->invoice_number}.xml";
-        Storage::disk('public')->put($path, $xml);
+        $path = UploadStorage::directory('invoices/ubl')."/{$invoice->invoice_number}.xml";
+        UploadStorage::disk()->put($path, $xml);
         $invoice->update(['ubl_path' => $path]);
     }
 

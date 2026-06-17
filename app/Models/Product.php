@@ -4,12 +4,12 @@ namespace App\Models;
 
 use App\Enums\ProductType;
 use App\Enums\VatCategory;
+use App\Support\UploadStorage;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -52,7 +52,7 @@ class Product extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->image_path);
+        return UploadStorage::url($this->image_path);
     }
 
     public function gramVariants(): HasMany

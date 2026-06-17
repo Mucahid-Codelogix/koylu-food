@@ -4,6 +4,7 @@ use App\Models\Delivery;
 use App\Models\Order;
 use App\Services\InvoiceLineCalculator;
 use App\Services\InvoiceService;
+use App\Support\UploadStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,7 +25,7 @@ function makeDeliveredOrder(bool $vatExempt = false): array
 }
 
 it('produces identical totals across the calculator, the invoice record, the PDF and the UBL', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
     ['order' => $order, 'delivery' => $delivery] = makeDeliveredOrder();
 
     $invoice = app(InvoiceService::class)->createFromDelivery($delivery);
@@ -38,7 +39,7 @@ it('produces identical totals across the calculator, the invoice record, the PDF
 });
 
 it('keeps record pdf and ubl in sync for mixed vat rates', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeInvoiceOrder([
         ['delivered' => 2, 'box_weight_kg' => 5, 'price_per_kg' => 10, 'vat_rate' => 9],
@@ -55,7 +56,7 @@ it('keeps record pdf and ubl in sync for mixed vat rates', function () {
 });
 
 it('keeps record pdf and ubl in sync for vat exempt customers', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeDeliveredOrder(vatExempt: true);
 
@@ -68,7 +69,7 @@ it('keeps record pdf and ubl in sync for vat exempt customers', function () {
 });
 
 it('keeps record pdf and ubl in sync for partial deliveries', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeDeliveredOrder();
 
@@ -76,7 +77,7 @@ it('keeps record pdf and ubl in sync for partial deliveries', function () {
 
     assertInvoiceConsistencyAcrossFormats($order, $delivery, $invoice);
 
-    $ubl = Storage::disk('public')->get($invoice->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->ubl_path);
     $quantities = collect(ublDocument($ubl)->xpath('//cac:InvoiceLine/cbc:InvoicedQuantity'))
         ->map(fn (SimpleXMLElement $node): float => (float) $node)
         ->all();
@@ -86,14 +87,14 @@ it('keeps record pdf and ubl in sync for partial deliveries', function () {
 });
 
 it('matches calculator line amounts to ubl invoice lines to the cent', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeDeliveredOrder();
     $invoice = app(InvoiceService::class)->createFromDelivery($delivery);
     app(InvoiceService::class)->generateUbl($invoice->refresh());
 
     $calculatorLines = app(InvoiceLineCalculator::class)->lines($order, $delivery);
-    $ubl = Storage::disk('public')->get($invoice->refresh()->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->refresh()->ubl_path);
     $ublLines = ublDocument($ubl)->xpath('//cac:InvoiceLine');
 
     expect($ublLines)->toHaveCount($calculatorLines->count());

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Support\UploadStorage;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -44,7 +45,9 @@ class ProductsTable
                 TextColumn::make('min_order_quantity')
                     ->label('Min. afname')
                     ->numeric(decimalPlaces: 2),
-                ImageColumn::make('image_path')->disk('public'),
+                ImageColumn::make('image_path')
+                    ->disk(UploadStorage::diskName())
+                    ->checkFileExistence(false),
                 IconColumn::make('is_active')
                     ->label('Actief')
                     ->boolean(),

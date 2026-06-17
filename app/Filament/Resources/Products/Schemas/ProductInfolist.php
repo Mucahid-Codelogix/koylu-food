@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Schemas;
 
 use App\Models\Product;
+use App\Support\UploadStorage;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -26,7 +27,8 @@ class ProductInfolist
 
                         ImageEntry::make('image_path')
                             ->label('Afbeelding')
-                            ->disk('public')
+                            ->disk(UploadStorage::diskName())
+                            ->checkFileExistence(false)
                             // ->height(200)
                             ->columnSpan(2)
                             ->defaultImageUrl('https://placehold.co/400x400?text=Geen+foto'),

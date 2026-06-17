@@ -1196,7 +1196,7 @@ new class extends Component
 
                         @if($item['image_path'])
                             <img
-                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item['image_path']) }}"
+                                src="{{ \App\Support\UploadStorage::url($item['image_path']) }}"
                                 class="w-14 h-14 object-cover rounded-lg shrink-0"
                                 alt="{{ $item['name'] }}"
                             />

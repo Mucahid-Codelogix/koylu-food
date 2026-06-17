@@ -12,6 +12,7 @@ use App\Models\RouteStop;
 use App\Services\InvoiceService;
 use App\Services\OrderWorkflowService;
 use App\Services\RouteWorkflowService;
+use App\Support\UploadStorage;
 use DomainException;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -289,8 +290,8 @@ class DriverDeliveryPhase extends Page
     {
         $data = explode(',', $base64);
         $image = base64_decode($data[1] ?? $data[0]);
-        $path = "signatures/stop_{$stopId}_".time().'.png';
-        \Storage::disk('public')->put($path, $image);
+        $path = UploadStorage::directory('signatures')."/stop_{$stopId}_".time().'.png';
+        UploadStorage::disk()->put($path, $image);
 
         return $path;
     }

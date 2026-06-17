@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
-use Illuminate\Support\Facades\Storage;
+use App\Support\UploadStorage;
 
 class InvoiceController extends Controller
 {
@@ -11,9 +11,9 @@ class InvoiceController extends Controller
     {
         $this->authorizeAccess($invoice);
 
-        abort_unless($invoice->pdf_path && Storage::disk('public')->exists($invoice->pdf_path), 404);
+        abort_unless($invoice->pdf_path && UploadStorage::disk()->exists($invoice->pdf_path), 404);
 
-        return Storage::disk('public')->download(
+        return UploadStorage::disk()->download(
             $invoice->pdf_path,
             $invoice->invoice_number.'.pdf'
         );
@@ -23,9 +23,9 @@ class InvoiceController extends Controller
     {
         $this->authorizeAccess($invoice);
 
-        abort_unless($invoice->ubl_path && Storage::disk('public')->exists($invoice->ubl_path), 404);
+        abort_unless($invoice->ubl_path && UploadStorage::disk()->exists($invoice->ubl_path), 404);
 
-        return Storage::disk('public')->download(
+        return UploadStorage::disk()->download(
             $invoice->ubl_path,
             $invoice->invoice_number.'.xml'
         );

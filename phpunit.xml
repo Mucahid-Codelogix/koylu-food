@@ -32,5 +32,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="AWS_BUCKET" value=""/>
+        <env name="AWS_ACCESS_KEY_ID" value=""/>
+        <env name="FILESYSTEM_UPLOAD_DISK" value="public"/>
     </php>
 </phpunit>

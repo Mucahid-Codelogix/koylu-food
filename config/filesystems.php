@@ -1,17 +1,34 @@
 <?php
 
-$usesObjectStorage = filled(env('AWS_BUCKET')) && filled(env('AWS_ENDPOINT'));
+$objectStorageBucket = env('AWS_BUCKET');
+$objectStorageRegion = env('AWS_DEFAULT_REGION');
 
-$objectStorageRoot = trim((string) env('AWS_FOLDER_PATH', env('UPLOAD_ENV', '')), '/');
+$usesObjectStorage = filled($objectStorageBucket)
+    && filled($objectStorageRegion)
+    && filled(env('AWS_ACCESS_KEY_ID'));
+
+$objectStorageEndpoint = env('AWS_ENDPOINT');
+
+if ($usesObjectStorage) {
+    if (blank($objectStorageEndpoint)) {
+        $objectStorageEndpoint = "https://{$objectStorageRegion}.digitaloceanspaces.com";
+    }
+
+    if (str_contains($objectStorageEndpoint, "{$objectStorageBucket}.")) {
+        $objectStorageEndpoint = "https://{$objectStorageRegion}.digitaloceanspaces.com";
+    }
+}
 
 $objectStorageUrl = env('AWS_URL');
 
 if ($usesObjectStorage && blank($objectStorageUrl)) {
-    $objectStorageUrl = sprintf(
-        'https://%s.%s.digitaloceanspaces.com',
-        env('AWS_BUCKET'),
-        env('AWS_DEFAULT_REGION'),
-    );
+    $objectStorageUrl = "https://{$objectStorageBucket}.{$objectStorageRegion}.digitaloceanspaces.com";
+}
+
+$uploadDisk = env('FILESYSTEM_UPLOAD_DISK');
+
+if (blank($uploadDisk)) {
+    $uploadDisk = (env('APP_ENV') === 'production' && $usesObjectStorage) ? 'spaces' : 'public';
 }
 
 return [
@@ -20,29 +37,27 @@ return [
     |--------------------------------------------------------------------------
     | Default Filesystem Disk
     |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
-    | Filesystem Disks
+    | Upload disk (product images, invoices, signatures)
     |--------------------------------------------------------------------------
     |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
+    | Locally: always public. Production: spaces when AWS credentials are set.
     |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
-    |
-    | When AWS_BUCKET and AWS_ENDPOINT are set (DigitalOcean Spaces), the
-    | public disk stores product images, PDFs and signatures in the bucket.
-    |
+    */
+
+    'upload_disk' => $uploadDisk,
+
+    'upload_env' => env('UPLOAD_ENV', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Filesystem Disks
+    |--------------------------------------------------------------------------
     */
 
     'disks' => [
@@ -55,20 +70,7 @@ return [
             'report' => false,
         ],
 
-        'public' => $usesObjectStorage ? [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'root' => $objectStorageRoot !== '' ? $objectStorageRoot : null,
-            'url' => $objectStorageUrl,
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
-        ] : [
+        'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
@@ -84,26 +86,28 @@ return [
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_DEFAULT_REGION'),
             'bucket' => env('AWS_BUCKET'),
-            'root' => $objectStorageRoot !== '' ? $objectStorageRoot : null,
             'url' => $objectStorageUrl,
-            'endpoint' => env('AWS_ENDPOINT'),
+            'endpoint' => $objectStorageEndpoint,
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'spaces' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'endpoint' => $objectStorageEndpoint,
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'url' => $objectStorageUrl,
+            'visibility' => 'public',
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
         ],
 
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Symbolic Links
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
-    */
 
     'links' => [
         public_path('storage') => storage_path('app/public'),

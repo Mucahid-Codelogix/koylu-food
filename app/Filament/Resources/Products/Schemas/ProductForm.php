@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Enums\ProductType;
 use App\Enums\VatCategory;
+use App\Support\UploadStorage;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -78,13 +79,14 @@ class ProductForm
                     ->schema([
                         FileUpload::make('image_path')
                             ->label('Afbeelding')
-                            ->disk('public')
-                            ->directory('products')
+                            ->disk(UploadStorage::diskName())
+                            ->directory(UploadStorage::directory('products'))
                             ->visibility('public')
                             ->image()
                             ->imageEditor()
                             ->imagePreviewHeight('200')
                             ->maxSize(5120)
+                            ->fetchFileInformation(false)
                             ->downloadable()
                             ->openable()
                             ->columnSpanFull(),

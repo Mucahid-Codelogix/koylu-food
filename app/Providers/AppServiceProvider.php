@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function ensureApplicationStorageIsReady(): void
     {
-        if (config('filesystems.disks.public.driver') !== 'local') {
+        if (config('filesystems.upload_disk') !== 'public') {
             return;
         }
 

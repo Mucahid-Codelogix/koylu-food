@@ -195,7 +195,7 @@
                         <label class="text-xs font-medium text-gray-500 block mb-2">Geregistreerde handtekening</label>
                         <div class="border border-gray-200 rounded-xl bg-gray-50 p-2">
                             <img
-                                src="{{ \Storage::disk('public')->url($existingDelivery->signature_path) }}"
+                                src="{{ \App\Support\UploadStorage::url($existingDelivery->signature_path) }}"
                                 alt="Handtekening"
                                 class="w-full object-contain max-h-36 rounded-lg"
                             />

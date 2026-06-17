@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\InvoiceLineCalculator;
 use App\Services\InvoiceService;
+use App\Support\UploadStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -168,11 +169,11 @@ function assertInvoiceConsistencyAcrossFormats(Order $order, Delivery $delivery,
     $service->generateUbl($invoice->refresh());
     $invoice->refresh();
 
-    Storage::disk('public')->assertExists($invoice->pdf_path);
-    Storage::disk('public')->assertExists($invoice->ubl_path);
+    Storage::disk(UploadStorage::diskName())->assertExists($invoice->pdf_path);
+    Storage::disk(UploadStorage::diskName())->assertExists($invoice->ubl_path);
 
     $html = renderInvoicePdfHtmlForInvoice($invoice);
-    $ubl = Storage::disk('public')->get($invoice->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->ubl_path);
     $doc = ublDocument($ubl);
 
     expect($html)->toContain(formatEuroForPdf($totals['subtotal']))

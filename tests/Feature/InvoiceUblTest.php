@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Services\InvoiceLineCalculator;
 use App\Services\InvoiceService;
 use App\Services\InvoiceUblBuilder;
+use App\Support\UploadStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
@@ -59,7 +60,7 @@ it('maps vat rates to the correct ubl category codes', function () {
 });
 
 it('exports invoice lines in kg with price per kg and per line vat', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeUblOrder([
         [
@@ -75,7 +76,7 @@ it('exports invoice lines in kg with price per kg and per line vat', function ()
     $invoice = $service->createFromDelivery($delivery);
     $service->generateUbl($invoice->refresh());
 
-    $ubl = Storage::disk('public')->get($invoice->refresh()->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->refresh()->ubl_path);
     $doc = ublDocument($ubl);
 
     expect($ubl)
@@ -90,7 +91,7 @@ it('exports invoice lines in kg with price per kg and per line vat', function ()
 });
 
 it('renders one tax subtotal per vat rate', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['order' => $order, 'delivery' => $delivery] = makeUblOrder([
         [
@@ -111,7 +112,7 @@ it('renders one tax subtotal per vat rate', function () {
     $invoice = $service->createFromDelivery($delivery);
     $service->generateUbl($invoice->refresh());
 
-    $ubl = Storage::disk('public')->get($invoice->refresh()->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->refresh()->ubl_path);
     $doc = ublDocument($ubl);
     $totals = app(InvoiceLineCalculator::class)->totals($order, $delivery);
 
@@ -137,7 +138,7 @@ it('renders one tax subtotal per vat rate', function () {
 });
 
 it('uses zero rated ubl categories for vat exempt customers', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['delivery' => $delivery] = makeUblOrder([
         [
@@ -152,7 +153,7 @@ it('uses zero rated ubl categories for vat exempt customers', function () {
     $invoice = $service->createFromDelivery($delivery);
     $service->generateUbl($invoice->refresh());
 
-    $ubl = Storage::disk('public')->get($invoice->refresh()->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->refresh()->ubl_path);
     $doc = ublDocument($ubl);
 
     expect($ubl)->toContain('<cbc:ID>Z</cbc:ID>')
@@ -161,7 +162,7 @@ it('uses zero rated ubl categories for vat exempt customers', function () {
 });
 
 it('bills missed delivery lines as zero kg in ubl', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     ['delivery' => $delivery] = makeUblOrder([
         [
@@ -183,7 +184,7 @@ it('bills missed delivery lines as zero kg in ubl', function () {
     $invoice = $service->createFromDelivery($delivery);
     $service->generateUbl($invoice->refresh());
 
-    $ubl = Storage::disk('public')->get($invoice->refresh()->ubl_path);
+    $ubl = Storage::disk(UploadStorage::diskName())->get($invoice->refresh()->ubl_path);
     $doc = ublDocument($ubl);
 
     $quantities = collect($doc->xpath('//cac:InvoiceLine/cbc:InvoicedQuantity'))

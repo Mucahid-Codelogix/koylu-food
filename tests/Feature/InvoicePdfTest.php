@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\InvoiceLineCalculator;
 use App\Services\InvoiceService;
+use App\Support\UploadStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
@@ -127,7 +128,7 @@ it('shows zero percent vat label for exempt customers', function () {
 });
 
 it('generates a pdf file through the invoice service', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     $customer = Customer::factory()->create();
     $order = Order::factory()->for($customer)->create();
@@ -158,11 +159,11 @@ it('generates a pdf file through the invoice service', function () {
     $invoice->refresh();
 
     expect($invoice->pdf_path)->not->toBeNull();
-    Storage::disk('public')->assertExists($invoice->pdf_path);
+    Storage::disk(UploadStorage::diskName())->assertExists($invoice->pdf_path);
 });
 
 it('keeps concept status when opening a concept pdf', function () {
-    Storage::fake('public');
+    Storage::fake(UploadStorage::diskName());
 
     $customer = Customer::factory()->create();
     $order = Order::factory()->for($customer)->create();
@@ -197,5 +198,5 @@ it('keeps concept status when opening a concept pdf', function () {
         ->and($invoice->ubl_path)->toBeNull()
         ->and($invoice->sent_at)->toBeNull();
 
-    Storage::disk('public')->assertExists($invoice->pdf_path);
+    Storage::disk(UploadStorage::diskName())->assertExists($invoice->pdf_path);
 });
