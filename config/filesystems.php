@@ -1,5 +1,19 @@
 <?php
 
+$usesObjectStorage = filled(env('AWS_BUCKET')) && filled(env('AWS_ENDPOINT'));
+
+$objectStorageRoot = trim((string) env('AWS_FOLDER_PATH', env('UPLOAD_ENV', '')), '/');
+
+$objectStorageUrl = env('AWS_URL');
+
+if ($usesObjectStorage && blank($objectStorageUrl)) {
+    $objectStorageUrl = sprintf(
+        'https://%s.%s.digitaloceanspaces.com',
+        env('AWS_BUCKET'),
+        env('AWS_DEFAULT_REGION'),
+    );
+}
+
 return [
 
     /*
@@ -26,6 +40,9 @@ return [
     |
     | Supported drivers: "local", "ftp", "sftp", "s3"
     |
+    | When AWS_BUCKET and AWS_ENDPOINT are set (DigitalOcean Spaces), the
+    | public disk stores product images, PDFs and signatures in the bucket.
+    |
     */
 
     'disks' => [
@@ -33,16 +50,30 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
 
-        'public' => [
+        'public' => $usesObjectStorage ? [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => $objectStorageRoot !== '' ? $objectStorageRoot : null,
+            'url' => $objectStorageUrl,
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],
@@ -53,7 +84,8 @@ return [
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_DEFAULT_REGION'),
             'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
+            'root' => $objectStorageRoot !== '' ? $objectStorageRoot : null,
+            'url' => $objectStorageUrl,
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,

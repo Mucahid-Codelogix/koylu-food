@@ -962,9 +962,9 @@ new class extends Component
                     ])>
 
                         <div class="h-44 bg-gray-100 relative overflow-hidden">
-                            @if($product->image_path)
+                            @if($product->imageUrl())
                                 <img
-                                    src="{{ asset('storage/' . $product->image_path) }}"
+                                    src="{{ $product->imageUrl() }}"
                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                     alt="{{ $product->name }}"
                                 />
@@ -1196,7 +1196,7 @@ new class extends Component
 
                         @if($item['image_path'])
                             <img
-                                src="{{ asset('storage/' . $item['image_path']) }}"
+                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item['image_path']) }}"
                                 class="w-14 h-14 object-cover rounded-lg shrink-0"
                                 alt="{{ $item['name'] }}"
                             />

@@ -6,6 +6,7 @@ use App\Services\Exact\ExactOnlineClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -29,7 +30,35 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->ensureApplicationStorageIsReady();
         $this->configureDefaults();
+    }
+
+    protected function ensureApplicationStorageIsReady(): void
+    {
+        if (config('filesystems.disks.public.driver') !== 'local') {
+            return;
+        }
+
+        foreach ([
+            storage_path('app/public/products'),
+            storage_path('app/public/livewire-tmp'),
+            storage_path('app/private/livewire-tmp'),
+        ] as $directory) {
+            if (! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+        }
+
+        $publicStorageLink = public_path('storage');
+
+        if (! file_exists($publicStorageLink)) {
+            try {
+                File::link(storage_path('app/public'), $publicStorageLink);
+            } catch (\Throwable) {
+                // Laravel serves /storage/* via the public disk when serve => true.
+            }
+        }
     }
 
     /**

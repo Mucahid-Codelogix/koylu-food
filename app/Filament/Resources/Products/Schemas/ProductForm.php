@@ -80,12 +80,13 @@ class ProductForm
                             ->label('Afbeelding')
                             ->disk('public')
                             ->directory('products')
+                            ->visibility('public')
                             ->image()
                             ->imageEditor()
                             ->imagePreviewHeight('200')
+                            ->maxSize(5120)
                             ->downloadable()
                             ->openable()
-                            ->preserveFilenames()
                             ->columnSpanFull(),
                     ]),
             ]);

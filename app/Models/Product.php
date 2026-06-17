@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -43,6 +44,15 @@ class Product extends Model
     public function isWholeChicken(): bool
     {
         return $this->product_type === ProductType::WholeChicken;
+    }
+
+    public function imageUrl(): ?string
+    {
+        if (blank($this->image_path)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->image_path);
     }
 
     public function gramVariants(): HasMany
