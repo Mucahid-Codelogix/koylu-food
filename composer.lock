@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "89101349ea7fb16c310a521a88c39034",
+    "content-hash": "7099120f4821a4f29670dd507222c2ee",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -4592,6 +4592,58 @@
                 }
             ],
             "time": "2025-12-27T19:41:33+00:00"
+        },
+        {
+            "name": "picqer/exact-php-client",
+            "version": "v4.6.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/picqer/exact-php-client.git",
+                "reference": "8b350573fff715003bfdbb62887537bcfa2b1cbf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/picqer/exact-php-client/zipball/8b350573fff715003bfdbb62887537bcfa2b1cbf",
+                "reference": "8b350573fff715003bfdbb62887537bcfa2b1cbf",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "~6.0|~7.0",
+                "php": ">=7.4.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^9.6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Picqer\\": "src/Picqer"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Stephan Groen",
+                    "email": "info@picqer.com"
+                }
+            ],
+            "description": "A PHP Client for the Exact API",
+            "homepage": "http://github.com/picqer/exact-php-client",
+            "keywords": [
+                "api",
+                "exact",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/picqer/exact-php-client/issues",
+                "source": "https://github.com/picqer/exact-php-client/tree/v4.6.0"
+            },
+            "time": "2025-12-19T10:01:48+00:00"
         },
         {
             "name": "pragmarx/google2fa",

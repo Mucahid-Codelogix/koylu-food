@@ -53,13 +53,16 @@ class ProductSupplier extends Model
 
     public function calculatePackagingPrice(ProductPackaging $packaging): string
     {
-        return bcmul((string) $this->price_per_kg, (string) $packaging->weight_kg, 4);
+        return sprintf(
+            '%.4f',
+            round((float) $this->price_per_kg * (float) $packaging->weight_kg, 4),
+        );
     }
 
     public function calculateLineSubtotal(ProductPackaging $packaging, float|int|string $quantity): string
     {
-        $packagingPrice = $this->calculatePackagingPrice($packaging);
+        $packagingPrice = (float) $this->calculatePackagingPrice($packaging);
 
-        return bcmul($packagingPrice, (string) $quantity, 2);
+        return sprintf('%.2f', round($packagingPrice * (float) $quantity, 2));
     }
 }

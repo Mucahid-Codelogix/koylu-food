@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DeliveryPdfController;
+use App\Http\Controllers\ExactOAuthController;
 use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/factuur/{invoice}/ubl', [InvoiceController::class, 'downloadUbl'])
         ->name('invoice.ubl');
+
+    Route::get('/exact/oauth/redirect', [ExactOAuthController::class, 'redirect'])
+        ->name('exact.oauth.redirect');
+    Route::get('/exact/oauth/callback', [ExactOAuthController::class, 'callback'])
+        ->name('exact.oauth.callback');
 });
 
 require __DIR__.'/settings.php';

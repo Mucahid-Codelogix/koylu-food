@@ -31,7 +31,7 @@ class ProductPricingService
     ): float {
         $pricePerKg = $this->pricePerKg($customer, $productSupplier);
 
-        return (float) bcmul((string) $pricePerKg, (string) $packaging->weight_kg, 2);
+        return round($pricePerKg * (float) $packaging->weight_kg, 2);
     }
 
     public function lineSubtotal(
