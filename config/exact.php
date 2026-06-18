@@ -51,4 +51,9 @@ return [
         ],
     ],
 
+    'alerts' => [
+        'mail_to' => env('EXACT_ALERT_MAIL_TO'),
+        'failure_threshold' => (int) env('EXACT_ALERT_FAILURE_THRESHOLD', 3),
+    ],
+
 ];

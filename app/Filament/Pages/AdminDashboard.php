@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\ExactSyncLogs\ExactSyncLogResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Filament\Resources\QueueFailedJobs\QueueFailedJobResource;
 use App\Filament\Resources\Routes\RouteResource;
 use App\Services\AdminDashboardService;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -96,6 +97,11 @@ class AdminDashboard extends BaseDashboard
     public static function exactSyncLogsUrl(): string
     {
         return ExactSyncLogResource::getUrl('index');
+    }
+
+    public static function failedQueueJobsUrl(): string
+    {
+        return QueueFailedJobResource::getUrl('index');
     }
 
     public static function conceptInvoicesUrl(): string

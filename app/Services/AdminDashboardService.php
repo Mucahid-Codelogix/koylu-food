@@ -12,6 +12,7 @@ use App\Models\ExactToken;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\QueueFailedJob;
 use App\Models\Route;
 use App\Models\RouteStop;
 use App\Services\Exact\ExactOnlineClient;
@@ -55,6 +56,7 @@ class AdminDashboardService
      *         division: ?int,
      *         sync_errors_count: int,
      *         failed_logs_count: int,
+     *         failed_queue_jobs_count: int,
      *     }
      * }
      */
@@ -182,6 +184,15 @@ class AdminDashboardService
             'failed_logs_count' => ExactSyncLog::query()
                 ->where('status', ExactSyncLogger::STATUS_FAILED)
                 ->where('created_at', '>=', now()->subDay())
+                ->count(),
+            'failed_queue_jobs_count' => QueueFailedJob::query()
+                ->where('failed_at', '>=', now()->subDay())
+                ->where(function ($query): void {
+                    $query->where('payload', 'like', '%Exact%')
+                        ->orWhere('payload', 'like', '%ImportCustomersFromExact%')
+                        ->orWhere('payload', 'like', '%ImportProductsFromExact%')
+                        ->orWhere('payload', 'like', '%ImportSuppliersFromExact%');
+                })
                 ->count(),
         ];
     }

@@ -115,11 +115,14 @@ Dit raakt bestaande facturen, dus vóór alle Exact-code en met sterke tests.
 2. Invoer toevoegen in `app/Filament/Driver/Pages/DriverDeliveryPhase.php` (notitie bij gedeeltelijke/retour-levering).
 3. Tonen voor kantoor in de admin (Delivery/Invoice). Geen koppeling met Exact (creditnota blijft handmatig).
 
-### Fase G — Beheer & robuustheid
+### Fase G — Beheer & robuustheid  ✅ gebouwd
 
-- `exact_sync_logs` viewer in Filament; sync-status badges op Klant/Product/Factuur; "Opnieuw proberen"-actie.
-- "Herbereken concept"-actie (`InvoiceService::recalculateInvoice`) vóór push.
-- Failed-jobs monitoring; queue-worker als supervisor in productie; mail-alert bij herhaald falen.
+- `exact_sync_logs` viewer in Filament; sync-status badges op Klant/Product/Factuur; **Opnieuw proberen**-actie op sync-log (dispatch naar queue).
+- **Herbereken concept**-actie (`InvoiceService::recalculateInvoice`) vóór push.
+- **Mislukte jobs** Filament-resource (`QueueFailedJobResource`) met retry via `queue:retry`.
+- Dashboard toont mislukte syncs en Exact queue-jobs (24u).
+- Mail-alert bij herhaald falen (`EXACT_ALERT_MAIL_TO`, drempel `EXACT_ALERT_FAILURE_THRESHOLD`) + bij definitief mislukte Exact queue-jobs.
+- Productie: queue-worker als supervisor (buiten scope code; zie deployment).
 
 ### Fase H — Import uit Exact (Exact → app)  ✅ gebouwd
 

@@ -28,7 +28,7 @@ class ExactSyncLogger
         ?string $message = null,
         ?string $error = null,
     ): ExactSyncLog {
-        return ExactSyncLog::query()->create([
+        $log = ExactSyncLog::query()->create([
             'syncable_type' => $syncable->getMorphClass(),
             'syncable_id' => $syncable->getKey(),
             'action' => $action,
@@ -36,5 +36,11 @@ class ExactSyncLogger
             'message' => $message,
             'error' => $error,
         ]);
+
+        if ($status === self::STATUS_FAILED && filled($error)) {
+            ExactSyncFailureNotifier::maybeNotifyRepeatedSyncFailure($syncable, $action, $error);
+        }
+
+        return $log;
     }
 }
