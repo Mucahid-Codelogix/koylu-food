@@ -67,6 +67,11 @@ class CustomerInfolist
                             ->label('Land')
                             ->placeholder('-'),
 
+                        TextEntry::make('vat_number')
+                            ->label('BTW-nummer')
+                            ->placeholder('-')
+                            ->copyable(),
+
                     ]),
 
                 Section::make('Bestelinstellingen')

@@ -41,4 +41,14 @@ return [
         'vat_code' => env('EXACT_SUPPLIER_VAT_CODE'),
     ],
 
+    'invoice' => [
+        'journal' => env('EXACT_INVOICE_JOURNAL', '70'),
+        'print_on_push' => env('EXACT_INVOICE_PRINT_ON_PUSH', true),
+        'vat_codes' => [
+            '0.00' => env('EXACT_INVOICE_VAT_CODE_EXEMPT'),
+            '9.00' => env('EXACT_INVOICE_VAT_CODE_LOW'),
+            '21.00' => env('EXACT_INVOICE_VAT_CODE_HIGH'),
+        ],
+    ],
+
 ];

@@ -18,8 +18,13 @@ class InvoiceInfolist
                     ->columns(2)
                     ->schema([
                         TextEntry::make('invoice_number')
-                            ->label('Factuurnummer')
+                            ->label('Intern nummer')
                             ->weight('bold')
+                            ->copyable(),
+
+                        TextEntry::make('exact_document_number')
+                            ->label('Exact factuurnummer')
+                            ->placeholder('Nog niet geboekt')
                             ->copyable(),
 
                         TextEntry::make('status')
@@ -90,6 +95,33 @@ class InvoiceInfolist
                         TextEntry::make('exact_invoice_id')
                             ->label('Exact factuur ID')
                             ->placeholder('-'),
+
+                        TextEntry::make('exact_sync_status')
+                            ->label('Exact sync')
+                            ->badge()
+                            ->state(function (Invoice $record): string {
+                                if (filled($record->exact_sync_error)) {
+                                    return 'Fout';
+                                }
+
+                                if ($record->isSyncedToExact()) {
+                                    return 'Geboekt';
+                                }
+
+                                return 'Niet geboekt';
+                            })
+                            ->color(function (Invoice $record): string {
+                                if (filled($record->exact_sync_error)) {
+                                    return 'danger';
+                                }
+
+                                if ($record->isSyncedToExact()) {
+                                    return 'success';
+                                }
+
+                                return 'gray';
+                            })
+                            ->tooltip(fn (Invoice $record): ?string => $record->exact_sync_error),
                     ]),
 
                 Section::make('Notities')

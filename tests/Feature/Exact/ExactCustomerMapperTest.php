@@ -21,7 +21,7 @@ it('maps customer fields to an exact account payload', function () {
         'postal_code' => '9711AA',
         'city' => 'Groningen',
         'country' => 'NL',
-        'vat_number' => 'NL123456789B01',
+        'vat_number' => 'NL123456782B01',
         'exact_article_suffix' => '05',
         'is_vat_exempt' => false,
     ]);
@@ -36,7 +36,7 @@ it('maps customer fields to an exact account payload', function () {
         'SearchCode' => 'KOYLU-42',
         'Email' => 'test@example.com',
         'Phone' => '050-1234567',
-        'VATNumber' => 'NL123456789B01',
+        'VATNumber' => 'NL123456782B01',
         'Language' => 'NL',
         'SalesVATCode' => '2',
     ]);
@@ -85,6 +85,26 @@ it('parses customer ids from exact search codes', function () {
 
     expect(ExactCustomerMapper::customerIdFromSearchCode('KOYLU-15'))->toBe(15)
         ->and(ExactCustomerMapper::customerIdFromSearchCode('OTHER-15'))->toBeNull();
+});
+
+it('omits invalid vat numbers from the exact account payload', function () {
+    config([
+        'exact.customer.search_code_prefix' => 'KOYLU',
+        'exact.customer.vat_codes.nl' => '2',
+    ]);
+
+    $customer = Customer::factory()->make([
+        'id' => 42,
+        'company_name' => 'Restaurant Test',
+        'address' => 'Hoofdstraat 1',
+        'postal_code' => '9711AA',
+        'city' => 'Groningen',
+        'country' => 'NL',
+        'vat_number' => 'NL123456789B01',
+    ]);
+
+    expect(ExactCustomerMapper::toExactAccount($customer))
+        ->not->toHaveKey('VATNumber');
 });
 
 it('omits optional vat codes when they are not configured', function () {

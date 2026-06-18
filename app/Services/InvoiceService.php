@@ -21,7 +21,7 @@ class InvoiceService
         $order = $delivery->order->load('items.product', 'customer');
 
         if ($order->invoice) {
-            return $this->recalculateInvoice($order->invoice, $delivery, $order);
+            return $this->refreshAmounts($order->invoice, $delivery, $order);
         }
 
         $amounts = $this->calculateAmountsFromDelivery($delivery, $order);
@@ -38,8 +38,21 @@ class InvoiceService
         ]);
     }
 
-    protected function recalculateInvoice(Invoice $invoice, Delivery $delivery, $order): Invoice
+    public function refreshAmounts(Invoice $invoice, ?Delivery $delivery = null, $order = null): Invoice
     {
+        $invoice->loadMissing([
+            'order.items.product',
+            'order.customer',
+            'order.delivery.items',
+        ]);
+
+        $order ??= $invoice->order;
+        $delivery ??= $order->delivery;
+
+        if ($delivery === null) {
+            return $invoice;
+        }
+
         $amounts = $this->calculateAmountsFromDelivery($delivery, $order);
 
         $invoice->update([
@@ -49,6 +62,11 @@ class InvoiceService
         ]);
 
         return $invoice->fresh();
+    }
+
+    protected function recalculateInvoice(Invoice $invoice, Delivery $delivery, $order): Invoice
+    {
+        return $this->refreshAmounts($invoice, $delivery, $order);
     }
 
     /**

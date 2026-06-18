@@ -3,6 +3,7 @@
 namespace App\Services\Exact;
 
 use App\Models\Customer;
+use App\Support\VatNumber;
 
 class ExactCustomerMapper
 {
@@ -21,7 +22,7 @@ class ExactCustomerMapper
             'SearchCode' => self::searchCode($customer),
             'Email' => $customer->email,
             'Phone' => $customer->phone,
-            'VATNumber' => $customer->vat_number,
+            'VATNumber' => VatNumber::forExact($customer->vat_number, self::countryCode($customer)),
             'Language' => self::languageCode($customer),
         ];
 

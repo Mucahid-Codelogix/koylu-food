@@ -30,6 +30,7 @@ class Invoice extends Model
             'invoice_date' => 'datetime',
             'sent_at' => 'datetime',
             'due_date' => 'datetime',
+            'exact_synced_at' => 'datetime',
         ];
     }
 
@@ -46,6 +47,16 @@ class Invoice extends Model
     public function isSent(): bool
     {
         return $this->status === InvoiceStatus::SENT;
+    }
+
+    public function displayInvoiceNumber(): string
+    {
+        return (string) ($this->exact_document_number ?? $this->invoice_number);
+    }
+
+    public function isSyncedToExact(): bool
+    {
+        return filled($this->exact_invoice_id) && filled($this->exact_synced_at);
     }
 
     /**

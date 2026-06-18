@@ -2,417 +2,422 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Factuur {{ $invoice->invoice_number }}</title>
+    <title>Factuur {{ $invoice->displayInvoiceNumber() }}</title>
     @php
         $brandRed = config('brand.colors.red');
-        $brandGreen = config('brand.colors.green');
+        $brandBlack = config('brand.colors.black');
+        $brandMuted = config('brand.colors.muted');
+        $customer = $invoice->order->customer;
+        $delivery = $invoice->order->delivery;
     @endphp
     <style>
+        @page {
+            margin: 0;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 12px;
-            color: #1a1a1a;
-            background: #fff;
+            font-size: 10px;
+            line-height: 1.4;
+            color: {{ $brandBlack }};
         }
 
-        .page { padding: 40px; }
+        /* DomPDF negeert @page-marges soms — padding op wrapper is betrouwbaarder */
+        .page {
+            padding: 18mm 22mm 20mm 22mm;
+        }
+
+        table { border-collapse: collapse; width: 100%; }
+
+        .text-muted { color: {{ $brandMuted }}; }
+        .text-right { text-align: right; }
+        .text-bold { font-weight: 700; }
+        .nowrap { white-space: nowrap; }
 
         /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding-bottom: 24px;
-            border-bottom: 3px solid {{ $brandRed }};
-            margin-bottom: 32px;
-        }
+        .header-table td { vertical-align: top; padding: 0; }
 
         .brand-logo {
-            height: 52px;
+            height: 38px;
             width: auto;
-            margin-bottom: 6px;
-        }
-
-        .brand-sub {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 2px;
-        }
-
-        .doc-meta { text-align: right; }
-
-        .doc-meta h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #111;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .doc-meta .number {
-            font-size: 13px;
-            color: {{ $brandRed }};
-            font-weight: 600;
-            margin-top: 4px;
-        }
-
-        .doc-meta .date {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 2px;
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            margin-top: 6px;
-            padding: 3px 10px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: #e6f4ec;
-            color: {{ $brandGreen }};
-        }
-
-        /* Info grid */
-        .info-grid {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-
-        .info-block {
-            flex: 1;
-            background: #f9fafb;
-            border-left: 3px solid {{ $brandRed }};
-            border-radius: 0 8px 8px 0;
-            padding: 14px 16px;
-        }
-
-        .info-block-title {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: {{ $brandRed }};
-            margin-bottom: 8px;
-        }
-
-        .info-block .name {
-            font-size: 14px;
-            font-weight: 700;
-            color: #111;
             margin-bottom: 4px;
         }
 
-        .info-block p {
-            font-size: 11px;
-            color: #4b5563;
-            line-height: 1.6;
-        }
-
-        /* Tabel */
-        .section-label {
+        .company-line {
             font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #9ca3af;
-            margin-bottom: 8px;
+            color: {{ $brandMuted }};
+            line-height: 1.45;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-        }
-
-        thead tr { background: {{ $brandRed }}; }
-
-        thead th {
-            padding: 10px 12px;
-            text-align: left;
-            font-size: 10px;
+        .doc-title {
+            font-size: 18px;
             font-weight: 700;
-            color: #fff;
-            text-transform: uppercase;
             letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: {{ $brandBlack }};
+            margin-bottom: 2px;
         }
 
-        thead th.right { text-align: right; }
+        .doc-number {
+            font-size: 12px;
+            font-weight: 700;
+            color: {{ $brandRed }};
+            margin-bottom: 6px;
+        }
 
-        tbody tr { border-bottom: 1px solid #f3f4f6; }
-        tbody tr:nth-child(even) { background: #fafafa; }
-
-        tbody td {
-            padding: 10px 12px;
-            font-size: 11px;
-            color: #374151;
+        .meta-table td {
+            padding: 1px 0 1px 12px;
+            font-size: 9px;
             vertical-align: top;
         }
 
-        tbody td.right { text-align: right; }
-
-        .missed {
-            color: #dc2626;
-            font-style: italic;
+        .meta-table td:first-child {
+            padding-left: 0;
+            color: {{ $brandMuted }};
+            width: 88px;
         }
 
-        .deviation {
-            font-size: 10px;
-            color: #d97706;
+        .header-rule {
+            border: none;
+            border-top: 2px solid {{ $brandRed }};
+            margin: 10px 0 12px;
+        }
+
+        /* Parties */
+        .parties-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 10px 0 0;
+        }
+
+        .parties-table td:last-child { padding: 0 0 0 10px; }
+
+        .block-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: {{ $brandRed }};
+            margin-bottom: 5px;
+        }
+
+        .party-name {
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .party-lines p,
+        .detail-lines p {
+            font-size: 9px;
+            color: #374151;
+            line-height: 1.45;
+        }
+
+        .spacer-sm { height: 12px; }
+        .spacer-md { height: 14px; }
+
+        /* Line items */
+        .items-table thead th {
+            background: {{ $brandRed }};
+            color: #fff;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .items-table thead th.right { text-align: right; }
+
+        .items-table tbody td {
+            padding: 6px 8px;
+            font-size: 9px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+
+        .items-table tbody tr:nth-child(even) td { background: #fafafa; }
+
+        .item-name { font-weight: 600; color: {{ $brandBlack }}; }
+
+        .item-sub {
             display: block;
+            font-size: 8px;
+            color: {{ $brandMuted }};
+            margin-top: 1px;
+        }
+
+        .item-note {
+            display: block;
+            font-size: 8px;
+            color: #b45309;
             margin-top: 2px;
         }
 
-        /* Totalen */
-        .totals {
-            width: 280px;
-            margin-left: auto;
-            margin-bottom: 32px;
+        .item-missed {
+            display: block;
+            font-size: 8px;
+            color: #dc2626;
+            font-style: italic;
+            margin-top: 2px;
         }
 
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            font-size: 12px;
-            color: #374151;
-            border-bottom: 1px solid #f3f4f6;
+        /* Bottom: totals + payment */
+        .bottom-table td { vertical-align: top; }
+
+        .bottom-left { width: 55%; padding-right: 12px; }
+
+        .bottom-right { width: 45%; }
+
+        .totals-table td {
+            padding: 3px 0;
+            font-size: 9px;
         }
 
-        .totals-row.total {
-            font-size: 15px;
-            font-weight: 700;
-            color: #111;
-            border-bottom: none;
+        .totals-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .totals-table tr.subtotal td { padding-top: 0; }
+
+        .totals-table tr.grand td {
             border-top: 2px solid {{ $brandRed }};
-            padding-top: 10px;
+            padding-top: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .totals-table tr.grand td:last-child { color: {{ $brandBlack }}; }
+
+        .payment-block {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #d1d5db;
+            font-size: 9px;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .payment-block strong { color: {{ $brandBlack }}; }
+
+        .notes-block {
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            font-size: 8px;
+            color: #4b5563;
+        }
+
+        .signature-box {
+            margin-top: 8px;
+            padding: 6px 8px;
+            border: 1px solid #e5e7eb;
+            font-size: 8px;
+        }
+
+        .signature-box img {
+            max-height: 42px;
+            max-width: 140px;
             margin-top: 4px;
         }
 
-        .totals-row span:last-child { font-weight: 600; }
-
-        /* Betaalinfo */
-        .payment-box {
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 24px;
-        }
-
-        .payment-box-title {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #ea580c;
-            margin-bottom: 8px;
-        }
-
-        .payment-box p {
-            font-size: 11px;
-            color: #4b5563;
-            line-height: 1.7;
-        }
-
-        .payment-box .due {
-            font-weight: 700;
-            color: #ea580c;
-        }
-
-        /* Handtekening */
-        .signature-section {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-
-        .signature-block {
-            flex: 1;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 14px;
-        }
-
-        .signature-block-title {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #9ca3af;
-            margin-bottom: 10px;
-        }
-
-        .signature-block img {
-            max-height: 70px;
-            max-width: 100%;
-        }
-
-        .signature-block p {
-            font-size: 11px;
-            color: #374151;
-            margin-top: 6px;
-        }
-
-        /* Footer */
         .footer {
-            margin-top: 32px;
-            padding-top: 16px;
+            margin-top: 14px;
+            padding-top: 8px;
             border-top: 1px solid #e5e7eb;
             text-align: center;
-            font-size: 10px;
+            font-size: 8px;
             color: #9ca3af;
-            line-height: 1.6;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
 <div class="page">
 
-    {{-- Header --}}
-    <div class="header">
-        <div>
+{{-- Header --}}
+<table class="header-table">
+    <tr>
+        <td style="width: 55%">
             <img src="{{ public_path(config('brand.logo')) }}" alt="{{ config('brand.name') }}" class="brand-logo">
-            <div class="brand-sub">{{ config('brand.tagline') }}</div>
-        </div>
-        <div class="doc-meta">
-            <h1>Factuur</h1>
-            <div class="number">{{ $invoice->invoice_number }}</div>
-            <div class="date">{{ $invoice->invoice_date?->format('d-m-Y') }}</div>
-            <span class="status-badge">Geleverd</span>
-        </div>
-    </div>
+            <div class="company-line">
+                <strong>{{ config('brand.name') }}</strong><br>
+                {{ config('brand.tagline') }}
+            </div>
+        </td>
+        <td style="width: 45%" class="text-right">
+            <div class="doc-title">Factuur</div>
+            <div class="doc-number">{{ $invoice->displayInvoiceNumber() }}</div>
+            <table class="meta-table" style="margin-left: auto;">
+                <tr>
+                    <td>Factuurdatum</td>
+                    <td class="text-bold">{{ $invoice->invoice_date?->format('d-m-Y') }}</td>
+                </tr>
+                <tr>
+                    <td>Vervaldatum</td>
+                    <td class="text-bold">{{ $invoice->due_date?->format('d-m-Y') }}</td>
+                </tr>
+                <tr>
+                    <td>Leverdatum</td>
+                    <td>{{ $delivery?->delivered_at?->format('d-m-Y') ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Order</td>
+                    <td>{{ $invoice->order->order_number }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-    {{-- Info grid --}}
-    <div class="info-grid">
-        <div class="info-block">
-            <div class="info-block-title">Factuuradres</div>
-            <p class="name">{{ $invoice->order->customer->company_name }}</p>
-            @if ($invoice->order->customer->contact_name)
-                <p>t.a.v. {{ $invoice->order->customer->contact_name }}</p>
-            @endif
-            <p>{{ $invoice->order->customer->address }}</p>
-            <p>{{ $invoice->order->customer->postal_code }} {{ $invoice->order->customer->city }}</p>
-            <p>{{ $invoice->order->customer->country }}</p>
-            @if ($invoice->order->customer->vat_number)
-                <p>BTW: {{ $invoice->order->customer->vat_number }}</p>
-            @endif
-        </div>
+<hr class="header-rule">
 
-        <div class="info-block">
-            <div class="info-block-title">Factuurdetails</div>
-            <p><strong>Factuurnummer:</strong> {{ $invoice->invoice_number }}</p>
-            <p><strong>Ordernummer:</strong> {{ $invoice->order->order_number }}</p>
-            <p><strong>Factuurdatum:</strong> {{ $invoice->invoice_date?->format('d-m-Y') }}</p>
-            <p><strong>Vervaldatum:</strong> {{ $invoice->due_date?->format('d-m-Y') }}</p>
-            <p><strong>Leverdatum:</strong> {{ $invoice->order->delivery?->delivered_at?->format('d-m-Y') ?? '-' }}</p>
-        </div>
-    </div>
+{{-- Klant + details --}}
+<table class="parties-table">
+    <tr>
+        <td>
+            <div class="block-label">Factuuradres</div>
+            <div class="party-name">{{ $customer->company_name }}</div>
+            <div class="party-lines">
+                @if ($customer->contact_name)
+                    <p>t.a.v. {{ $customer->contact_name }}</p>
+                @endif
+                <p>{{ $customer->address }}</p>
+                <p>{{ $customer->postal_code }} {{ $customer->city }}</p>
+                @if ($customer->country)
+                    <p>{{ $customer->country }}</p>
+                @endif
+                @if ($customer->vat_number)
+                    <p>BTW {{ $customer->vat_number }}</p>
+                @endif
+            </div>
+        </td>
+        <td>
+            <div class="block-label">Referenties</div>
+            <div class="detail-lines">
+                <p><span class="text-muted">Factuurnummer:</span> <strong>{{ $invoice->displayInvoiceNumber() }}</strong></p>
+                <p><span class="text-muted">Ordernummer:</span> {{ $invoice->order->order_number }}</p>
+                @if ($customer->email)
+                    <p><span class="text-muted">E-mail:</span> {{ $customer->email }}</p>
+                @endif
+                @if ($delivery?->receiver_name)
+                    <p><span class="text-muted">Ontvanger:</span> {{ $delivery->receiver_name }}</p>
+                @endif
+            </div>
+        </td>
+    </tr>
+</table>
 
-    {{-- Artikelen --}}
-    <div class="section-label">Artikelen</div>
-    <table>
-        <thead>
+<div class="spacer-md"></div>
+
+{{-- Regels --}}
+<table class="items-table">
+    <thead>
+    <tr>
+        <th style="width: 46%">Omschrijving</th>
+        <th class="right" style="width: 18%">Geleverd (kg)</th>
+        <th class="right" style="width: 18%">Prijs/kg</th>
+        <th class="right" style="width: 18%">Bedrag</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach ($lines as $line)
+        @php
+            $orderedKg = round($line['ordered_quantity'] * $line['box_weight_kg'], 3);
+        @endphp
         <tr>
-            <th style="width: 40%">Omschrijving</th>
-            <th class="right">Geleverd (kg)</th>
-            <th class="right">Prijs/kg</th>
-            <th class="right">Bedrag</th>
+            <td>
+                <span class="item-name">{{ $line['product_name'] }}</span>
+                <span class="item-sub">{{ $line['unit'] }}</span>
+                @if ($line['is_missed'])
+                    <span class="item-missed">Niet geleverd — {{ $line['missed_reason'] }}</span>
+                @elseif ($line['delivered_kg'] != $orderedKg)
+                    <span class="item-note">Afwijking: {{ rtrim(rtrim(number_format($orderedKg - $line['delivered_kg'], 3, ',', '.'), '0'), ',') }} kg t.o.v. bestelling</span>
+                @endif
+            </td>
+            <td class="text-right">{{ rtrim(rtrim(number_format($line['delivered_kg'], 3, ',', '.'), '0'), ',') }}</td>
+            <td class="text-right nowrap">€ {{ number_format($line['price_per_kg'], 4, ',', '.') }}</td>
+            <td class="text-right nowrap">€ {{ number_format($line['line_subtotal'], 2, ',', '.') }}</td>
         </tr>
-        </thead>
-        <tbody>
-        @foreach ($lines as $line)
-            @php
-                $orderedKg = round($line['ordered_quantity'] * $line['box_weight_kg'], 3);
-            @endphp
-            <tr>
-                <td>
-                    {{ $line['product_name'] }}
-                    <span class="deviation" style="color: #6b7280;">{{ $line['unit'] }}</span>
-                    @if ($line['is_missed'])
-                        <span class="missed">— niet geleverd</span>
-                        <span class="deviation">{{ $line['missed_reason'] }}</span>
-                    @elseif ($line['delivered_kg'] != $orderedKg)
-                        <span class="deviation">Afwijking: {{ rtrim(rtrim(number_format($orderedKg - $line['delivered_kg'], 3, ',', '.'), '0'), ',') }} kg</span>
+    @endforeach
+    </tbody>
+</table>
+
+<div class="spacer-sm"></div>
+
+{{-- Totalen + betaalinfo --}}
+<table class="bottom-table">
+    <tr>
+        <td class="bottom-left">
+            @if ($delivery?->signature_path)
+                <div class="signature-box">
+                    <strong>Ontvangstbevestiging</strong>
+                    @if ($delivery->delivered_at)
+                        <span class="text-muted"> · {{ $delivery->delivered_at->format('d-m-Y H:i') }}</span>
                     @endif
-                </td>
-                <td class="right">{{ rtrim(rtrim(number_format($line['delivered_kg'], 3, ',', '.'), '0'), ',') }}</td>
-                <td class="right">€ {{ number_format($line['price_per_kg'], 4, ',', '.') }}</td>
-                <td class="right">€ {{ number_format($line['line_subtotal'], 2, ',', '.') }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-    </table>
-
-    {{-- Totalen --}}
-    <div class="totals">
-        <div class="totals-row">
-            <span>Subtotaal</span>
-            <span>€ {{ number_format($invoice->subtotal_amount, 2, ',', '.') }}</span>
-        </div>
-        @foreach ($vatByRate as $vatGroup)
-            <div class="totals-row">
-                <span>
-                    @if ($vatGroup['rate'] == 0)
-                        BTW (0% — vrijgesteld)
-                    @else
-                        BTW ({{ number_format($vatGroup['rate'], 0, ',', '.') }}%)
+                    <br>
+                    <img src="{{ storage_path('app/public/'.$delivery->signature_path) }}" alt="Handtekening">
+                    @if ($delivery->receiver_name)
+                        <br>{{ $delivery->receiver_name }}
                     @endif
-                </span>
-                <span>€ {{ number_format($vatGroup['vat_amount'], 2, ',', '.') }}</span>
+                </div>
+            @endif
+
+            @if ($invoice->notes)
+                <div class="notes-block">
+                    <strong>Opmerkingen</strong><br>
+                    {{ $invoice->notes }}
+                </div>
+            @endif
+        </td>
+        <td class="bottom-right">
+            <table class="totals-table">
+                <tr class="subtotal">
+                    <td>Subtotaal excl. BTW</td>
+                    <td>€ {{ number_format($invoice->subtotal_amount, 2, ',', '.') }}</td>
+                </tr>
+                @foreach ($vatByRate as $vatGroup)
+                    <tr>
+                        <td>
+                            @if ($vatGroup['rate'] == 0)
+                                BTW (0% — vrijgesteld)
+                            @else
+                                BTW ({{ number_format($vatGroup['rate'], 0, ',', '.') }}%)
+                            @endif
+                        </td>
+                        <td>€ {{ number_format($vatGroup['vat_amount'], 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+                <tr class="grand">
+                    <td>Totaal incl. BTW</td>
+                    <td>€ {{ number_format($invoice->total_amount, 2, ',', '.') }}</td>
+                </tr>
+            </table>
+
+            <div class="payment-block">
+                Gelieve <strong>€ {{ number_format($invoice->total_amount, 2, ',', '.') }}</strong>
+                te voldoen vóór <strong>{{ $invoice->due_date?->format('d-m-Y') }}</strong>,
+                onder vermelding van factuurnummer <strong>{{ $invoice->displayInvoiceNumber() }}</strong>.
             </div>
-        @endforeach
-        <div class="totals-row total">
-            <span>Totaal</span>
-            <span>€ {{ number_format($invoice->total_amount, 2, ',', '.') }}</span>
-        </div>
-    </div>
+        </td>
+    </tr>
+</table>
 
-    {{-- Betaalinformatie --}}
-    <div class="payment-box">
-        <div class="payment-box-title">Betaalinformatie</div>
-        <p>Gelieve het bedrag van <strong>€ {{ number_format($invoice->total_amount, 2, ',', '.') }}</strong> over te maken voor <span class="due">{{ $invoice->due_date?->format('d-m-Y') }}</span>.</p>
-        <p>Onder vermelding van factuurnummer <strong>{{ $invoice->invoice_number }}</strong>.</p>
-    </div>
-
-    {{-- Handtekening --}}
-    @if ($invoice->order->delivery?->signature_path)
-        <div class="section-label">Ontvangstbevestiging</div>
-        <div class="signature-section">
-            <div class="signature-block">
-                <div class="signature-block-title">Handtekening ontvanger</div>
-                <img src="{{ storage_path('app/public/' . $invoice->order->delivery->signature_path) }}" alt="Handtekening" />
-                <p>{{ $invoice->order->delivery->receiver_name ?? '-' }}</p>
-            </div>
-            <div class="signature-block">
-                <div class="signature-block-title">Geleverd op</div>
-                <p style="font-size: 15px; font-weight: 700; margin-top: 8px;">
-                    {{ $invoice->order->delivery->delivered_at?->format('d-m-Y') }}
-                </p>
-                <p>{{ $invoice->order->delivery->delivered_at?->format('H:i') }} uur</p>
-            </div>
-        </div>
-    @endif
-
-    {{-- Notities --}}
-    @if ($invoice->notes)
-        <div class="payment-box" style="background: #f9fafb; border-color: #e5e7eb;">
-            <div class="payment-box-title" style="color: #6b7280;">Opmerkingen</div>
-            <p>{{ $invoice->notes }}</p>
-        </div>
-    @endif
-
-    {{-- Footer --}}
-    <div class="footer">
-        <p>{{ config('brand.name') }} · KvK: XXXXXXXX · BTW: NL XXXXXXXXX B01</p>
-        <p>{{ $invoice->invoice_number }} · Aangemaakt op {{ now()->format('d-m-Y H:i') }}</p>
-    </div>
+<div class="footer">
+    {{ config('brand.name') }} · KvK XXXXXXXX · BTW NL XXXXXXXXX B01 · {{ $invoice->displayInvoiceNumber() }}
+</div>
 
 </div>
 </body>

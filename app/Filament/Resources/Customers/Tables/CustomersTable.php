@@ -40,6 +40,10 @@ class CustomersTable
                 TextColumn::make('country')
                     ->label('Land')
                     ->searchable(),
+                TextColumn::make('vat_number')
+                    ->label('BTW-nummer')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('min_order_amount')
                     ->label('Minimale order afnamen')
                     ->numeric()

@@ -74,6 +74,11 @@ class CustomerForm
                             ->default('NL')
                             ->maxLength(10),
 
+                        TextInput::make('vat_number')
+                            ->label('BTW-nummer')
+                            ->maxLength(255)
+                            ->helperText('Wordt meegestuurd naar Exact bij synchronisatie. Ongeldige nummers worden overgeslagen.'),
+
                     ]),
 
                 Section::make('Bestelinstellingen')

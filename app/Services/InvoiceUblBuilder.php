@@ -50,7 +50,7 @@ class InvoiceUblBuilder
 
     <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
     <cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>
-    <cbc:ID>'.$this->escape($invoice->invoice_number).'</cbc:ID>
+    <cbc:ID>'.$this->escape($invoice->displayInvoiceNumber()).'</cbc:ID>
     <cbc:IssueDate>'.$invoice->invoice_date?->format('Y-m-d').'</cbc:IssueDate>
     <cbc:DueDate>'.$invoice->due_date?->format('Y-m-d').'</cbc:DueDate>
     <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>

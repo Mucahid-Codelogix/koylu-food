@@ -3,6 +3,7 @@
 namespace App\Services\Exact;
 
 use App\Models\Supplier;
+use App\Support\VatNumber;
 
 class ExactSupplierMapper
 {
@@ -18,7 +19,7 @@ class ExactSupplierMapper
             'SearchCode' => self::searchCode($supplier),
             'Email' => $supplier->email,
             'Phone' => $supplier->phone,
-            'VATNumber' => $supplier->vat_number,
+            'VATNumber' => VatNumber::forExact($supplier->vat_number, 'NL'),
             'ChamberOfCommerce' => $supplier->kvk_number,
             'Language' => 'NL',
         ];
