@@ -1,7 +1,9 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 @import '../../koylu-brand.css';
+@import '../../admin-ui.css';
 
 @source '../../../../app/Filament/Pages/**/*';
 @source '../../../../app/Filament/Resources/**/*';
 @source '../../../../app/Filament/Widgets/**/*';
 @source '../../../../resources/views/filament/admin/**/*';
+@source '../../../../resources/views/components/koylu/**/*';

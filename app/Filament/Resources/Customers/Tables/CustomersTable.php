@@ -3,9 +3,14 @@
 namespace App\Filament\Resources\Customers\Tables;
 
 use App\Filament\Support\RecordDeletionActions;
+use App\Jobs\SyncCustomerToExact;
+use App\Models\Customer;
+use App\Support\ExactSyncBadge;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -44,6 +49,20 @@ class CustomersTable
                     ->label('BTW-nummer')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('exact_sync_status')
+                    ->label('Exact')
+                    ->badge()
+                    ->state(fn (Customer $record): string => ExactSyncBadge::label(
+                        $record->exact_sync_error,
+                        $record->exact_synced_at,
+                        filled($record->exact_account_id),
+                    ))
+                    ->color(fn (Customer $record): string => ExactSyncBadge::color(
+                        $record->exact_sync_error,
+                        $record->exact_synced_at,
+                        filled($record->exact_account_id),
+                    ))
+                    ->tooltip(fn (Customer $record): ?string => $record->exact_sync_error),
                 TextColumn::make('min_order_amount')
                     ->label('Minimale order afnamen')
                     ->numeric()
@@ -66,6 +85,21 @@ class CustomersTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                Action::make('syncToExact')
+                    ->label('Sync naar Exact')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->action(function (Customer $record): void {
+                        $record->updateQuietly(['exact_sync_error' => null]);
+                        SyncCustomerToExact::dispatch($record);
+
+                        Notification::make()
+                            ->title('Sync gestart')
+                            ->body('De klant wordt naar Exact gesynchroniseerd.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

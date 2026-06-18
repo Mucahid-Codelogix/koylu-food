@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Deliveries\Schemas;
 
+use App\Support\DeliveryDeviationSummary;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -40,6 +41,17 @@ class DeliveryInfolist
                         TextEntry::make('signature_path')
                             ->label('Handtekening')
                             ->placeholder('Geen handtekening')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Leveringsregels')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->schema([
+                        TextEntry::make('deviation_summary')
+                            ->label('Afwijkingen & retour-notities')
+                            ->html()
+                            ->state(fn ($record): ?string => DeliveryDeviationSummary::html($record))
+                            ->placeholder('Geen afwijkingen')
                             ->columnSpanFull(),
                     ]),
 

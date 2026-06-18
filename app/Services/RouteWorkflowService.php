@@ -42,6 +42,24 @@ class RouteWorkflowService
         return $stop->fresh();
     }
 
+    public function reopenStop(Route $route, RouteStop $stop): RouteStop
+    {
+        if ($stop->status !== RouteStopStatus::SKIPPED) {
+            throw new DomainException('Alleen overgeslagen stops kunnen worden hervat.');
+        }
+
+        $stop->update(['status' => RouteStopStatus::PENDING]);
+
+        if ($route->status === RouteStatus::COMPLETED) {
+            $route->update([
+                'status' => RouteStatus::IN_PROGRESS,
+                'completed_at' => null,
+            ]);
+        }
+
+        return $stop->fresh();
+    }
+
     public function markStopDelivered(RouteStop $stop): RouteStop
     {
         $stop->update(['status' => RouteStopStatus::DELIVERED]);

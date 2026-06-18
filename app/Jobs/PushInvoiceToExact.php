@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Services\Exact\ExactApiException;
 use App\Services\Exact\ExactInvoiceSyncService;
 use App\Services\Exact\ExactOnlineClient;
+use App\Services\Exact\ExactSyncLogger;
 use App\Services\InvoiceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -41,6 +42,8 @@ class PushInvoiceToExact implements ShouldQueue
             $this->invoice->updateQuietly([
                 'exact_sync_error' => 'Exact Online is niet gekoppeld.',
             ]);
+
+            ExactSyncLogger::failed($this->invoice, 'push_invoice', 'Exact Online is niet gekoppeld.');
 
             return;
         }
@@ -87,10 +90,18 @@ class PushInvoiceToExact implements ShouldQueue
 
             $invoiceService->generatePdf($invoice);
             $invoiceService->generateUbl($invoice);
+
+            ExactSyncLogger::success(
+                $this->invoice,
+                'push_invoice',
+                sprintf('Factuur geboekt als %s.', $result->documentNumber ?? $result->invoiceId),
+            );
         } catch (ExactApiException $exception) {
             $this->invoice->updateQuietly([
                 'exact_sync_error' => $exception->getMessage(),
             ]);
+
+            ExactSyncLogger::failed($this->invoice, 'push_invoice', $exception->getMessage());
 
             throw $exception;
         } finally {

@@ -37,7 +37,28 @@ it('counts new placed orders', function () {
     $data = app(AdminDashboardService::class)->getData();
 
     expect($data['new_orders_count'])->toBe(1)
-        ->and($data['new_orders'])->toHaveCount(1);
+        ->and($data['new_orders_preview'])->toHaveCount(1)
+        ->and($data['new_orders_overflow'])->toBe(0);
+});
+
+it('limits order previews and reports overflow', function () {
+    $customer = Customer::factory()->create();
+
+    foreach (range(1, 7) as $index) {
+        Order::create([
+            'order_number' => 'ORD-OVER'.$index,
+            'customer_id' => $customer->id,
+            'status' => OrderStatus::PLACED,
+            'order_date' => today(),
+            'total_price' => 10 * $index,
+        ]);
+    }
+
+    $data = app(AdminDashboardService::class)->getData();
+
+    expect($data['new_orders_count'])->toBe(7)
+        ->and($data['new_orders_preview'])->toHaveCount(AdminDashboardService::ORDERS_PREVIEW_LIMIT)
+        ->and($data['new_orders_overflow'])->toBe(2);
 });
 
 it('aggregates today routes per driver with delivery progress', function () {
@@ -88,7 +109,9 @@ it('aggregates today routes per driver with delivery progress', function () {
 
     expect($data['total_stops_today'])->toBe(2)
         ->and($data['delivered_stops_today'])->toBe(1)
-        ->and($data['driver_routes'])->toHaveCount(1)
-        ->and($data['driver_routes']->first()['driver_name'])->toBe('Jan Chauffeur')
-        ->and($data['driver_routes']->first()['progress_percent'])->toBe(50);
+        ->and($data['pending_stops_today'])->toBe(1)
+        ->and($data['driver_routes_preview'])->toHaveCount(1)
+        ->and($data['driver_routes_preview']->first()['driver_name'])->toBe('Jan Chauffeur')
+        ->and($data['driver_routes_preview']->first()['progress_percent'])->toBe(50)
+        ->and($data['driver_routes_preview']->first()['next_pending_stop'])->not->toBeNull();
 });

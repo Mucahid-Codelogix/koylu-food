@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Services\Exact\ExactApiException;
 use App\Services\Exact\ExactCustomerSyncService;
 use App\Services\Exact\ExactOnlineClient;
+use App\Services\Exact\ExactSyncLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -36,6 +37,8 @@ class SyncCustomerToExact implements ShouldQueue
                 'exact_sync_error' => 'Exact Online is niet gekoppeld.',
             ]);
 
+            ExactSyncLogger::failed($this->customer, 'push_customer', 'Exact Online is niet gekoppeld.');
+
             return;
         }
 
@@ -47,10 +50,14 @@ class SyncCustomerToExact implements ShouldQueue
                 'exact_synced_at' => now(),
                 'exact_sync_error' => null,
             ]);
+
+            ExactSyncLogger::success($this->customer, 'push_customer', 'Debiteur gesynchroniseerd.');
         } catch (ExactApiException $exception) {
             $this->customer->updateQuietly([
                 'exact_sync_error' => $exception->getMessage(),
             ]);
+
+            ExactSyncLogger::failed($this->customer, 'push_customer', $exception->getMessage());
 
             throw $exception;
         }

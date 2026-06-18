@@ -14,8 +14,10 @@ use App\Services\OrderWorkflowService;
 use App\Services\RouteWorkflowService;
 use App\Support\UploadStorage;
 use DomainException;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Auth\Access\AuthorizationException;
 
 class DriverDeliveryPhase extends Page
@@ -110,6 +112,7 @@ class DriverDeliveryPhase extends Page
                 'delivered_quantity' => $existingItem?->delivered_quantity ?? $item->quantity,
                 'is_missed' => $existingItem ? $existingItem->delivered_quantity == 0 : false,
                 'missed_reason' => $existingItem?->missed_reason ?? '',
+                'return_note' => $existingItem?->return_note ?? '',
             ];
         }
 
@@ -172,6 +175,7 @@ class DriverDeliveryPhase extends Page
                     'ordered_quantity' => $data['ordered_quantity'],
                     'delivered_quantity' => $data['is_missed'] ? 0 : $data['delivered_quantity'],
                     'missed_reason' => $data['is_missed'] ? $data['missed_reason'] : null,
+                    'return_note' => $this->returnNoteForDeliveryItem($data),
                 ]
             );
         }
@@ -220,10 +224,80 @@ class DriverDeliveryPhase extends Page
         $this->advanceToNextPendingOrComplete();
     }
 
+    public function skipStopAction(): Action
+    {
+        return Action::make('skipStop')
+            ->label('Overslaan')
+            ->icon(Heroicon::Forward)
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalHeading('Stop overslaan?')
+            ->modalDescription('Weet je zeker dat je deze stop wilt overslaan? Je kunt dit later hervatten via "Levering hervatten".')
+            ->modalSubmitActionLabel('Ja, overslaan')
+            ->modalCancelActionLabel('Annuleren')
+            ->modalIcon(Heroicon::OutlinedForward)
+            ->extraAttributes(['class' => 'w-full justify-center'])
+            ->action(fn (): mixed => $this->skipStop());
+    }
+
+    public function saveDeliveryAction(): Action
+    {
+        $isLastStop = fn (): bool => $this->currentStopIndex >= $this->getTotalStops() - 1;
+
+        return Action::make('saveDelivery')
+            ->label(fn (): string => $isLastStop() ? 'Route afronden' : 'Levering bevestigen')
+            ->icon(Heroicon::CheckCircle)
+            ->color('success')
+            ->requiresConfirmation()
+            ->modalHeading(fn (): string => $isLastStop() ? 'Route afronden?' : 'Levering bevestigen?')
+            ->modalDescription('Weet je zeker dat je deze levering wilt bevestigen? Daarna kan niets meer worden gewijzigd.')
+            ->modalSubmitActionLabel(fn (): string => $isLastStop() ? 'Ja, route afronden' : 'Ja, bevestigen')
+            ->modalCancelActionLabel('Annuleren')
+            ->modalIcon(Heroicon::OutlinedCheckCircle)
+            ->extraAttributes(['class' => 'w-full justify-center py-4 text-lg'])
+            ->action(fn (): mixed => $this->saveDelivery());
+    }
+
+    public function resumeStop(): void
+    {
+        $stop = $this->getCurrentStop();
+
+        if ($stop->status !== RouteStopStatus::SKIPPED) {
+            Notification::make()->title('Deze stop kan niet worden hervat')->warning()->send();
+
+            return;
+        }
+
+        app(RouteWorkflowService::class)->reopenStop($this->route, $stop);
+
+        $this->route->refresh();
+        $this->route->load([
+            'routeStops' => fn ($q) => $q->orderBy('stop_order'),
+            'routeStops.order.customer',
+            'routeStops.order.items.product',
+        ]);
+        $this->initDeliveryData();
+        $this->dispatch('stop-changed');
+
+        Notification::make()
+            ->title('Stop hervat')
+            ->body('Je kunt deze levering nu alsnog afronden.')
+            ->success()
+            ->send();
+    }
+
     public function previousStop(): void
     {
         if ($this->currentStopIndex > 0) {
             $this->currentStopIndex--;
+            $this->reloadStopsAndInit();
+        }
+    }
+
+    public function nextStop(): void
+    {
+        if ($this->currentStopIndex < $this->getTotalStops() - 1) {
+            $this->currentStopIndex++;
             $this->reloadStopsAndInit();
         }
     }
@@ -284,6 +358,29 @@ class DriverDeliveryPhase extends Page
         });
 
         return $partial ? DeliveryStatus::PARTIAL : DeliveryStatus::DELIVERED;
+    }
+
+    /**
+     * @param  array{
+     *     is_missed: bool,
+     *     ordered_quantity: float|int|string,
+     *     delivered_quantity: float|int|string,
+     *     return_note?: ?string,
+     * }  $data
+     */
+    protected function returnNoteForDeliveryItem(array $data): ?string
+    {
+        if ($data['is_missed']) {
+            return null;
+        }
+
+        if ((float) $data['delivered_quantity'] >= (float) $data['ordered_quantity']) {
+            return null;
+        }
+
+        $note = trim((string) ($data['return_note'] ?? ''));
+
+        return filled($note) ? $note : null;
     }
 
     private function saveSignature(string $base64, int $stopId): string

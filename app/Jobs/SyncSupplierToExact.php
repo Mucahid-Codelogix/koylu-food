@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use App\Services\Exact\ExactApiException;
 use App\Services\Exact\ExactOnlineClient;
 use App\Services\Exact\ExactSupplierSyncService;
+use App\Services\Exact\ExactSyncLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -36,6 +37,8 @@ class SyncSupplierToExact implements ShouldQueue
                 'exact_sync_error' => 'Exact Online is niet gekoppeld.',
             ]);
 
+            ExactSyncLogger::failed($this->supplier, 'push_supplier', 'Exact Online is niet gekoppeld.');
+
             return;
         }
 
@@ -47,10 +50,14 @@ class SyncSupplierToExact implements ShouldQueue
                 'exact_synced_at' => now(),
                 'exact_sync_error' => null,
             ]);
+
+            ExactSyncLogger::success($this->supplier, 'push_supplier', 'Leverancier gesynchroniseerd.');
         } catch (ExactApiException $exception) {
             $this->supplier->updateQuietly([
                 'exact_sync_error' => $exception->getMessage(),
             ]);
+
+            ExactSyncLogger::failed($this->supplier, 'push_supplier', $exception->getMessage());
 
             throw $exception;
         }

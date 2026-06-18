@@ -116,3 +116,22 @@ it('blocks delivery access when loading is not completed', function () {
 
     app(RouteWorkflowService::class)->assertCanAccessDelivery($route, $driver);
 })->throws(DomainException::class);
+
+it('reopens a skipped stop and reactivates a completed route', function () {
+    $route = Route::factory()->create([
+        'status' => RouteStatus::COMPLETED,
+        'completed_at' => now(),
+        'loading_completed_at' => now(),
+    ]);
+
+    $stop = RouteStop::factory()->create([
+        'route_id' => $route->id,
+        'status' => RouteStopStatus::SKIPPED,
+    ]);
+
+    $reopened = app(RouteWorkflowService::class)->reopenStop($route, $stop);
+
+    expect($reopened->status)->toBe(RouteStopStatus::PENDING)
+        ->and($route->fresh()->status)->toBe(RouteStatus::IN_PROGRESS)
+        ->and($route->fresh()->completed_at)->toBeNull();
+});

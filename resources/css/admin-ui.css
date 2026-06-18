@@ -1,0 +1,241 @@
+/**
+ * Köylü UI — gedeelde componenten voor custom Filament-pagina's (admin, driver, klant).
+ * Gebruik Blade components: <x-koylu.card>, <x-koylu.kpi>, enz.
+ */
+@layer components {
+    .koylu-page {
+        @apply space-y-6 max-w-[1400px];
+    }
+
+    .koylu-card {
+        @apply rounded-xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden;
+    }
+
+    .koylu-card-header {
+        @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/40;
+    }
+
+    .koylu-card-title {
+        @apply text-sm font-semibold text-gray-900 dark:text-white;
+    }
+
+    .koylu-card-subtitle {
+        @apply text-xs text-gray-500 dark:text-gray-400 mt-0.5;
+    }
+
+    .koylu-card-body {
+        @apply px-5 py-4;
+    }
+
+    .koylu-card-footer {
+        @apply flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 text-xs text-gray-500;
+    }
+
+    .koylu-kpi-grid {
+        @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
+    }
+
+    .koylu-kpi {
+        @apply rounded-xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden;
+        @apply p-5 transition hover:border-primary-300/80 dark:hover:border-primary-700/40 hover:shadow-md;
+    }
+
+    .koylu-kpi-label {
+        @apply text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide;
+    }
+
+    .koylu-kpi-value {
+        @apply text-2xl font-bold text-gray-900 dark:text-white mt-2 tabular-nums;
+    }
+
+    .koylu-kpi-meta {
+        @apply text-xs text-gray-400 mt-1;
+    }
+
+    .koylu-badge-neutral {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+        @apply bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300;
+    }
+
+    .koylu-badge-success {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+        @apply bg-koylu-green-50 text-koylu-green-700 dark:bg-koylu-green/20 dark:text-koylu-green-50;
+    }
+
+    .koylu-badge-warning {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+        @apply bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200;
+    }
+
+    .koylu-badge-danger {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+        @apply bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-200;
+    }
+
+    .koylu-badge-primary {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+        @apply bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-200;
+    }
+
+    .koylu-alert-danger {
+        @apply rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2;
+        @apply border-red-200/80 bg-red-50 dark:bg-red-950/25 dark:border-red-900/50 text-red-800 dark:text-red-200;
+    }
+
+    .koylu-alert-warning {
+        @apply rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2;
+        @apply border-amber-200/80 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/50 text-amber-900 dark:text-amber-200;
+    }
+
+    .koylu-table {
+        @apply w-full text-sm;
+    }
+
+    .koylu-table thead tr {
+        @apply text-left text-[11px] uppercase tracking-wide text-gray-400 border-b border-gray-100 dark:border-gray-800;
+    }
+
+    .koylu-table th {
+        @apply px-5 py-2.5 font-semibold;
+    }
+
+    .koylu-table tbody {
+        @apply divide-y divide-gray-50 dark:divide-gray-800/80;
+    }
+
+    .koylu-table tbody tr {
+        @apply hover:bg-gray-50/80 dark:hover:bg-gray-800/30 transition;
+    }
+
+    .koylu-table td {
+        @apply px-5 py-3;
+    }
+
+    .koylu-empty {
+        @apply flex flex-col items-center justify-center py-12 px-5 text-center;
+    }
+
+    .koylu-empty-icon {
+        @apply w-10 h-10 text-gray-300 dark:text-gray-600 mb-3;
+    }
+
+    .koylu-empty-title {
+        @apply text-sm font-medium text-gray-600 dark:text-gray-300;
+    }
+
+    .koylu-empty-text {
+        @apply text-xs text-gray-400 mt-1;
+    }
+
+    .koylu-link {
+        @apply text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline;
+    }
+
+    .koylu-page-header {
+        @apply flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-1;
+    }
+
+    .koylu-page-title {
+        @apply text-xl sm:text-2xl font-bold text-gray-900 dark:text-white;
+    }
+
+    .koylu-page-meta {
+        @apply text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide;
+    }
+
+    .koylu-status-strip {
+        @apply inline-flex items-center gap-3 rounded-xl border px-4 py-3;
+    }
+
+    .koylu-status-strip-success {
+        @apply inline-flex items-center gap-3 rounded-xl border px-4 py-3;
+        @apply border-koylu-green/20 bg-koylu-green-50/60 dark:bg-koylu-green/10 dark:border-koylu-green/30;
+    }
+
+    .koylu-status-strip-warning {
+        @apply inline-flex items-center gap-3 rounded-xl border px-4 py-3;
+        @apply border-amber-200/80 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-800/50;
+    }
+
+    .koylu-progress {
+        @apply h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden;
+    }
+
+    .koylu-progress-bar {
+        @apply h-full rounded-full bg-primary-500 transition-all duration-500;
+    }
+
+    .koylu-list-item {
+        @apply flex items-center gap-3 px-5 py-3 hover:bg-gray-50/80 dark:hover:bg-gray-800/30 transition;
+    }
+
+    /* Driver / actie-knoppen (grote touch targets) */
+    .koylu-btn {
+        @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition;
+    }
+
+    .koylu-btn-primary {
+        @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition;
+        @apply w-full py-3.5 bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white;
+    }
+
+    .koylu-btn-success {
+        @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition;
+        @apply w-full py-3.5 bg-koylu-green hover:bg-koylu-green-700 active:bg-koylu-green-700 text-white;
+    }
+
+    .koylu-btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 font-medium rounded-xl transition;
+        @apply py-3.5 border border-gray-200 text-gray-600 text-sm disabled:opacity-40;
+        @apply hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800;
+    }
+
+    .koylu-card-hero {
+        @apply bg-primary-500 px-5 py-4 flex items-center justify-between;
+    }
+
+    .koylu-card-hero-icon {
+        @apply bg-white/20 rounded-xl p-2;
+    }
+
+    .koylu-card-hero-label {
+        @apply text-primary-100 text-xs font-medium;
+    }
+
+    .koylu-card-hero-title {
+        @apply text-white font-semibold;
+    }
+
+    .koylu-info-box-neutral {
+        @apply flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800;
+    }
+
+    .koylu-info-box-success {
+        @apply flex items-center gap-3 p-3 rounded-xl;
+        @apply bg-koylu-green-50 dark:bg-koylu-green/10 border border-koylu-green/20 dark:border-koylu-green/30;
+    }
+
+    .koylu-info-box-warning {
+        @apply flex items-center gap-3 p-3 rounded-xl;
+        @apply bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800;
+    }
+
+    .koylu-stop-dot-pending {
+        @apply w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0;
+        @apply bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300;
+    }
+
+    .koylu-stop-dot-delivered {
+        @apply w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0;
+        @apply bg-koylu-green-50 text-koylu-green dark:bg-koylu-green/20 dark:text-koylu-green-50;
+    }
+
+    .koylu-stop-dot-skipped {
+        @apply w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0;
+        @apply bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200;
+    }
+
+    .koylu-phase-card {
+        @apply rounded-xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden p-4 space-y-2;
+    }
+}

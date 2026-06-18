@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
+use App\Support\DeliveryDeviationSummary;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -122,6 +123,21 @@ class InvoiceInfolist
                                 return 'gray';
                             })
                             ->tooltip(fn (Invoice $record): ?string => $record->exact_sync_error),
+                    ]),
+
+                Section::make('Leveringsafwijkingen')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->visible(fn (Invoice $record): bool => filled(
+                        DeliveryDeviationSummary::html($record->order?->delivery)
+                    ))
+                    ->schema([
+                        TextEntry::make('delivery_deviation_summary')
+                            ->label('Chauffeur-notities')
+                            ->html()
+                            ->state(fn (Invoice $record): ?string => DeliveryDeviationSummary::html(
+                                $record->order?->delivery
+                            ))
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Notities')
