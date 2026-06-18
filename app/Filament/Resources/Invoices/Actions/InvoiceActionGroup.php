@@ -15,7 +15,7 @@ class InvoiceActionGroup
     public static function make(
         bool $includeView = true,
         bool $includeEdit = true,
-        bool $includeDelete = true,
+        bool $includeDelete = false,
         ?\Closure $afterApprove = null,
     ): ActionGroup {
         $actions = [];

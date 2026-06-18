@@ -30,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile(isSimple: false)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
+            ->databaseNotifications()
             ->navigationGroups([
                 'Assortiment',
                 'Verkoop',

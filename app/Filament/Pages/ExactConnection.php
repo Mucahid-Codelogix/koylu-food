@@ -2,6 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ImportsCustomersFromExact;
+use App\Filament\Concerns\ImportsProductsFromExact;
+use App\Filament\Concerns\ImportsSuppliersFromExact;
 use App\Models\ExactToken;
 use App\Services\Exact\ExactApiException;
 use App\Services\Exact\ExactOnlineClient;
@@ -11,6 +14,10 @@ use Filament\Support\Icons\Heroicon;
 
 class ExactConnection extends Page
 {
+    use ImportsCustomersFromExact;
+    use ImportsProductsFromExact;
+    use ImportsSuppliersFromExact;
+
     protected string $view = 'filament.admin.pages.exact-connection';
 
     protected static string|null|\BackedEnum $navigationIcon = Heroicon::Link;

@@ -66,6 +66,11 @@ class ProductForm
                             ->native(false)
                             ->helperText('Bepaalt het btw-tarief op facturen voor nieuwe bestellingen (9% of 21%).'),
 
+                        TextInput::make('exact_article_code')
+                            ->label('Exact artikelcode')
+                            ->maxLength(50)
+                            ->helperText('Eén artikel per product in Exact. Leeg laten = automatisch KOYLU-P-{id} bij sync.'),
+
                         Textarea::make('description')
                             ->label('Omschrijving')
                             ->rows(4)

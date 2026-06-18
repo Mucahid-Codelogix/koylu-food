@@ -4,17 +4,21 @@ namespace App\Models;
 
 use App\Enums\ProductType;
 use App\Enums\VatCategory;
+use App\Models\Concerns\GuardsDeletion;
+use App\Observers\ProductObserver;
 use App\Support\UploadStorage;
 use Database\Factories\ProductFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([ProductObserver::class])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
-    use HasFactory;
+    use GuardsDeletion, HasFactory;
 
     protected $fillable = [
         'name',
@@ -25,6 +29,9 @@ class Product extends Model
         'image_path',
         'is_active',
         'vat_category',
+        'exact_article_code',
+        'exact_synced_at',
+        'exact_sync_error',
     ];
 
     /**
@@ -38,6 +45,7 @@ class Product extends Model
             'min_order_quantity' => 'decimal:2',
             'is_active' => 'boolean',
             'vat_category' => VatCategory::class,
+            'exact_synced_at' => 'datetime',
         ];
     }
 
@@ -105,6 +113,16 @@ class Product extends Model
         return $this->hasMany(CustomerProductPrice::class);
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function deliveryItems(): HasMany
+    {
+        return $this->hasMany(DeliveryItem::class);
+    }
+
     public function defaultGramVariant(): ?ProductGramVariant
     {
         return $this->activeGramVariants()
@@ -135,5 +153,24 @@ class Product extends Model
         float|int|string $quantity,
     ): string {
         return $productSupplier->calculateLineSubtotal($packaging, $quantity);
+    }
+
+    public function canBeDeleted(): bool
+    {
+        return ! $this->orderItems()->exists()
+            && ! $this->deliveryItems()->exists();
+    }
+
+    public function deletionBlockReason(): ?string
+    {
+        if ($this->orderItems()->exists()) {
+            return 'Dit product is besteld en kan niet worden verwijderd. Deactiveer het product in plaats daarvan.';
+        }
+
+        if ($this->deliveryItems()->exists()) {
+            return 'Dit product is geleverd en kan niet worden verwijderd. Deactiveer het product in plaats daarvan.';
+        }
+
+        return null;
     }
 }

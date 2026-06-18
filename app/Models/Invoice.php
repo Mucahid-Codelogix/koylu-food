@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\InvoiceStatus;
+use App\Models\Concerns\GuardsDeletion;
 use App\Services\InvoiceLineCalculator;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
-    use HasFactory;
+    use GuardsDeletion, HasFactory;
 
     protected $guarded = [];
 
@@ -81,5 +82,15 @@ class Invoice extends Model
                 );
             })
             ->implode('<br>');
+    }
+
+    public function canBeDeleted(): bool
+    {
+        return false;
+    }
+
+    public function deletionBlockReason(): ?string
+    {
+        return 'Facturen kunnen niet worden verwijderd.';
     }
 }

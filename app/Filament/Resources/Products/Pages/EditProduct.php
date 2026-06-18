@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\Products\Pages;
 
 use App\Filament\Resources\Products\ProductResource;
-use Filament\Actions\DeleteAction;
+use App\Filament\Support\RecordDeletionActions;
+use App\Jobs\SyncProductToExact;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditProduct extends EditRecord
@@ -26,8 +29,23 @@ class EditProduct extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('syncToExact')
+                ->label('Sync naar Exact')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('gray')
+                ->requiresConfirmation()
+                ->action(function (): void {
+                    SyncProductToExact::dispatch($this->getRecord());
+
+                    Notification::make()
+                        ->title('Sync gestart')
+                        ->body('Het product wordt naar Exact gesynchroniseerd.')
+                        ->success()
+                        ->send();
+                }),
             ViewAction::make(),
-            DeleteAction::make(),
+            RecordDeletionActions::deactivateAction(),
+            RecordDeletionActions::safeDeleteAction(),
         ];
     }
 }

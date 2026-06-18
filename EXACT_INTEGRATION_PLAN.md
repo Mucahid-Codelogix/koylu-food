@@ -87,9 +87,9 @@ Dit raakt bestaande facturen, dus vóór alle Exact-code en met sterke tests.
 4. Trigger: `CustomerObserver` (created/updated) + lazy fallback bij factuur-push.
 5. Tests met **gemockte** `ExactOnlineClient`.
 
-### Fase D — Artikel-sync (één artikel per product)
+### Fase D — Artikel-sync (één artikel per product)  ✅ gebouwd
 
-1. Migratie sync-status op `products`.
+1. Migratie sync-status op `products` + `exact_article_code` (terug op productniveau; backfill vanuit standaard-leverancier).
 2. `app/Services/Exact/ExactItemMapper.php`: `Product` → Exact Item (code = `exact_article_code`, eenheid **kg**, BTW-categorie laag/hoog uit `vat_category`).
 3. `app/Jobs/SyncProductToExact.php` + observer op `Product` + handmatige Filament-actie "Sync naar Exact".
 4. Filament: sync-status badge (synced/failed + fout).
@@ -121,6 +121,28 @@ Dit raakt bestaande facturen, dus vóór alle Exact-code en met sterke tests.
 - "Herbereken concept"-actie (`InvoiceService::recalculateInvoice`) vóór push.
 - Failed-jobs monitoring; queue-worker als supervisor in productie; mail-alert bij herhaald falen.
 
+### Fase H — Import uit Exact (Exact → app)  ✅ gebouwd
+
+Bestaande stamgegevens staan al in Exact; die hoeven niet handmatig in de app te worden ingevoerd. Vanaf Fase C/D geldt **app → Exact** voor nieuwe records; Fase H vult de **tegenrichting** aan voor de eenmalige start en voor records die later in Exact worden aangemaakt.
+
+#### Klanten (debiteuren)
+
+1. `app/Services/Exact/ExactAccountToCustomerMapper.php`: Exact Account → `Customer`.
+2. `app/Services/Exact/ExactCustomerImportService.php`: haal debiteuren op (`Status eq 'C'`), koppel of maak aan.
+   - Match op `exact_account_id`, daarna `SearchCode` (`KOYLU-{id}`), daarna e-mail.
+3. `app/Jobs/ImportCustomersFromExact.php` (queue) + Filament-knop op **Exact-koppeling** en **Verkoop → Klanten**.
+
+#### Artikelen (producten)
+
+1. `app/Services/Exact/ExactItemToProductMapper.php`: Exact Item → `Product` (naam, `exact_article_code`, `vat_category` uit BTW-code).
+2. `app/Services/Exact/ExactProductImportService.php`: haal verkoopartikelen op (`IsSalesItem eq true`), koppel of maak aan.
+   - Match op `exact_article_code`, daarna `KOYLU-P-{id}`, daarna productnaam.
+   - Import zet `exact_synced_at`; **geen** terug-push naar Exact (observer slaat sync over bij import).
+3. `app/Jobs/ImportProductsFromExact.php` (queue) + Filament-knop op **Exact-koppeling** en **Producten**.
+4. Geïmporteerde producten hebben nog **geen** verpakking/leverancier — die stel je handmatig in voor shop-zichtbaarheid.
+
+**Gebruik:** eenmalig bestaande Exact-data binnenhalen; daarna opnieuw draaien wanneer in Exact nieuwe debiteuren/artikelen zijn toegevoegd. Dagelijks nieuwe records blijven in de **app** aanmaken (Fase C/D pusht naar Exact). Import maakt **geen** shop-gebruikers aan.
+
 ### Later (buiten scope nu)
 
 - Betaalstatus terug uit Exact (`sent` → `paid`) via poll/webhook.
@@ -130,9 +152,10 @@ Dit raakt bestaande facturen, dus vóór alle Exact-code en met sterke tests.
 ## 5. Volgorde & afhankelijkheden
 
 ```
-Fase A (kg + BTW)  ──►  Fase B (OAuth)  ──►  Fase C (klanten)  ─┐
+Fase A (kg + BTW)  ──►  Fase B (OAuth)  ──►  Fase C (klanten push)  ─┐
                                           └►  Fase D (artikelen) ─┴►  Fase E (boeken)  ──►  Fase G (beheer)
 Fase F (retour-notitie) kan parallel, los van Exact.
+Fase H (import uit Exact) na Fase C/D; eenmalig + herhaalbaar voor nieuwe Exact-debiteuren en -artikelen.
 ```
 
 Fase A eerst (verandert bestaande facturen). Fase B kan starten zodra de sandbox is ingericht. Mappers/jobs (C/D/E) zijn met een gemockte client te bouwen en te testen zonder live Exact.
@@ -149,6 +172,7 @@ Fase A eerst (verandert bestaande facturen). Fase B kan starten zodra de sandbox
 - [ ] Factuur wordt pas geboekt na admin-goedkeuring; nummer komt uit Exact en staat op de PDF.
 - [ ] Twee keer boeken levert één factuur in Exact (idempotent).
 - [ ] Chauffeur kan een retour-notitie achterlaten; kantoor ziet die terug.
+- [ ] Import uit Exact haalt debiteuren én artikelen binnen; herimport voegt nieuwe records toe zonder duplicaten.
 - [ ] `vendor/bin/pint` schoon; volledige Pest-suite groen.
 
 ---

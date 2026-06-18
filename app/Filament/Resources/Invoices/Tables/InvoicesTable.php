@@ -5,8 +5,6 @@ namespace App\Filament\Resources\Invoices\Tables;
 use App\Enums\InvoiceStatus;
 use App\Filament\Resources\Invoices\Actions\InvoiceActionGroup;
 use App\Models\Invoice;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -57,11 +55,6 @@ class InvoicesTable
             ])
             ->recordActions([
                 InvoiceActionGroup::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 }

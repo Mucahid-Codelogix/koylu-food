@@ -63,6 +63,33 @@
                 </x-filament::button>
             @else
                 <x-filament::button
+                    wire:click="importProductsFromExact"
+                    wire:confirm="Alle verkoopartikelen uit Exact importeren of bijwerken in de app?"
+                    color="primary"
+                    icon="heroicon-o-arrow-down-tray"
+                >
+                    Importeer artikelen uit Exact
+                </x-filament::button>
+
+                <x-filament::button
+                    wire:click="importCustomersFromExact"
+                    wire:confirm="Alle debiteuren uit Exact importeren of bijwerken in de app?"
+                    color="primary"
+                    icon="heroicon-o-arrow-down-tray"
+                >
+                    Importeer klanten uit Exact
+                </x-filament::button>
+
+                <x-filament::button
+                    wire:click="importSuppliersFromExact"
+                    wire:confirm="Alle crediteuren uit Exact importeren of bijwerken in de app?"
+                    color="primary"
+                    icon="heroicon-o-arrow-down-tray"
+                >
+                    Importeer leveranciers uit Exact
+                </x-filament::button>
+
+                <x-filament::button
                     wire:click="testConnection"
                     color="gray"
                     icon="heroicon-o-signal"

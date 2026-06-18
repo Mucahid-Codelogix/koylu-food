@@ -17,4 +17,28 @@ return [
         'initial_delay_seconds' => 1,
     ],
 
+    'customer' => [
+        'search_code_prefix' => env('EXACT_CUSTOMER_SEARCH_CODE_PREFIX', 'KOYLU'),
+        'vat_codes' => [
+            'nl' => env('EXACT_CUSTOMER_VAT_CODE_NL'),
+            'be' => env('EXACT_CUSTOMER_VAT_CODE_BE'),
+            'exempt' => env('EXACT_CUSTOMER_VAT_CODE_EXEMPT'),
+        ],
+    ],
+
+    'item' => [
+        'code_prefix' => env('EXACT_ITEM_CODE_PREFIX', 'KOYLU'),
+        'unit' => env('EXACT_ITEM_UNIT', 'kg'),
+        'item_group' => env('EXACT_ITEM_GROUP'),
+        'vat_codes' => [
+            'low' => env('EXACT_ITEM_VAT_CODE_LOW'),
+            'high' => env('EXACT_ITEM_VAT_CODE_HIGH'),
+        ],
+    ],
+
+    'supplier' => [
+        'search_code_prefix' => env('EXACT_SUPPLIER_SEARCH_CODE_PREFIX', 'KOYLU-S'),
+        'vat_code' => env('EXACT_SUPPLIER_VAT_CODE'),
+    ],
+
 ];
