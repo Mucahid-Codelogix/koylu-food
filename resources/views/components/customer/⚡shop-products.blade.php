@@ -70,7 +70,7 @@ new class extends Component
                 fn ($q) => $q->where('supplier_id', $this->selectedSupplier)
             ))
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
-            ->with(['activePackagings', 'activeGramVariants', 'activeProductSuppliers.supplier'])
+            ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
             ->orderBy('name')
             ->get();
 
@@ -553,12 +553,24 @@ new class extends Component
         $this->quantities[$this->cart[$cartKey]['product_id']] = (float) $this->cart[$cartKey]['quantity'];
     }
 
+    private function availablePackagings(Product $product): Collection
+    {
+        $productSupplier = $this->resolveProductSupplier($product);
+        $psId = $productSupplier?->id;
+
+        return $product->activePackagings
+            ->filter(fn ($packaging) => $packaging->isAvailableForProductSupplier($psId))
+            ->values();
+    }
+
     private function resolvePackaging(Product $product): ?ProductPackaging
     {
+        $available = $this->availablePackagings($product);
         $packagingId = $this->selections[$product->id]['packaging_id'] ?? null;
 
-        return $product->activePackagings->firstWhere('id', $packagingId)
-            ?? $product->defaultPackaging();
+        return $available->firstWhere('id', $packagingId)
+            ?? $available->firstWhere('is_default', true)
+            ?? $available->first();
     }
 
     private function resolveGramVariant(Product $product): ?ProductGramVariant
@@ -950,7 +962,8 @@ new class extends Component
                         $inCart = $this->productInCart($product->id);
                         $cardQty = $this->cardQuantity($product->id);
                         $isWholeChicken = $product->isWholeChicken();
-                        $hasMultiplePackagings = ! $isWholeChicken && $product->activePackagings->count() > 1;
+                        $availablePackagings = $this->availablePackagings($product);
+                        $hasMultiplePackagings = ! $isWholeChicken && $availablePackagings->count() > 1;
                         $hasMultipleVariants = $isWholeChicken && $product->activeGramVariants->count() > 1;
                         $hasMultipleSuppliers = $product->activeProductSuppliers->count() > 1;
                     @endphp
@@ -1020,7 +1033,7 @@ new class extends Component
                                             wire:model.live="selections.{{ $product->id }}.packaging_id"
                                             class="mt-1 w-full text-sm border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
                                         >
-                                            @foreach($product->activePackagings as $packaging)
+                                            @foreach($availablePackagings as $packaging)
                                                 <option value="{{ $packaging->id }}">{{ $packaging->displayLabel() }}</option>
                                             @endforeach
                                         </select>

@@ -6,6 +6,7 @@ use App\Models\Concerns\GuardsDeletion;
 use App\Observers\SupplierObserver;
 use Database\Factories\SupplierFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -60,6 +61,25 @@ class Supplier extends Model
                 'is_active',
             ])
             ->withTimestamps();
+    }
+
+    /**
+     * Query-helper: verpakkingen die expliciet aan deze leverancier gekoppeld zijn (niet generiek).
+     *
+     * Let op: dit is bewust een query-Builder en GEEN Eloquent-relatie. Gebruik het niet
+     * als Filament RelationManager-relationship (dat vereist een echte Relation-instantie).
+     *
+     * @return Builder<ProductPackaging>
+     */
+    public function linkedPackagings(): Builder
+    {
+        return ProductPackaging::query()
+            ->whereIn('id', function ($query): void {
+                $query->select('product_packaging_supplier.product_packaging_id')
+                    ->from('product_packaging_supplier')
+                    ->join('product_suppliers', 'product_suppliers.id', '=', 'product_packaging_supplier.product_supplier_id')
+                    ->where('product_suppliers.supplier_id', $this->getKey());
+            });
     }
 
     public function canBeDeleted(): bool

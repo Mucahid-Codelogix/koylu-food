@@ -6,6 +6,7 @@ use Database\Factories\ProductSupplierFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductSupplier extends Model
@@ -49,6 +50,12 @@ class ProductSupplier extends Model
     public function customerPrices(): HasMany
     {
         return $this->hasMany(CustomerProductPrice::class);
+    }
+
+    public function packagings(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductPackaging::class, 'product_packaging_supplier')
+            ->withTimestamps();
     }
 
     public function calculatePackagingPrice(ProductPackaging $packaging): string

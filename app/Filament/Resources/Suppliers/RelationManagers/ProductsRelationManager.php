@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Suppliers\RelationManagers;
 
+use App\Models\ProductSupplier;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -73,6 +74,7 @@ class ProductsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('packagings'))
             ->columns([
                 TextColumn::make('product.name')
                     ->label('Product')
@@ -81,6 +83,15 @@ class ProductsRelationManager extends RelationManager
                     ->label('Prijs per kg')
                     ->money('EUR')
                     ->sortable(),
+                TextColumn::make('exclusive_packagings')
+                    ->label('Exclusieve verpakkingen')
+                    ->state(fn (ProductSupplier $record): array => $record->packagings
+                        ->map(fn ($packaging) => $packaging->displayLabel())
+                        ->all())
+                    ->badge()
+                    ->placeholder('Alle verpakkingen')
+                    ->listWithLineBreaks()
+                    ->limitList(3),
                 IconColumn::make('is_default')
                     ->label('Standaard')
                     ->boolean(),

@@ -46,6 +46,7 @@ class PackagingsRelationManager extends RelationManager
             ->recordTitleAttribute('label')
             ->defaultSort('sort_order')
             ->reorderable('sort_order')
+            ->modifyQueryUsing(fn ($query) => $query->with('productSuppliers.supplier'))
             ->emptyStateHeading('Nog geen verpakkingen')
             ->emptyStateDescription('Voeg minstens één verpakking toe met het gewicht in kg (bv. doos 10 kg).')
             ->emptyStateIcon('heroicon-o-archive-box')
@@ -62,6 +63,12 @@ class PackagingsRelationManager extends RelationManager
                     ->label('Weergave')
                     ->formatStateUsing(fn (ProductPackaging $record): string => $record->displayLabel())
                     ->wrap(),
+                TextColumn::make('productSuppliers.supplier.name')
+                    ->label('Leveranciers')
+                    ->badge()
+                    ->placeholder('Alle')
+                    ->listWithLineBreaks()
+                    ->limitList(3),
                 TextColumn::make('min_order_quantity')
                     ->label('Min. afname')
                     ->numeric(decimalPlaces: 2)

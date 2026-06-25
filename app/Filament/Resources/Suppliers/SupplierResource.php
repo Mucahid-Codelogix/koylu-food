@@ -23,8 +23,11 @@ class SupplierResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingOffice2;
 
     protected static ?string $recordTitleAttribute = 'name';
+
     protected static ?string $navigationLabel = 'Leveranciers';
+
     protected static ?string $modelLabel = 'Leveranciers';
+
     protected static string|null|\UnitEnum $navigationGroup = 'Inkoop';
 
     public static function form(Schema $schema): Schema
