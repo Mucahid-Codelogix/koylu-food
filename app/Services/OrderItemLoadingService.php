@@ -7,6 +7,11 @@ use App\Models\ProductGramVariant;
 
 class OrderItemLoadingService
 {
+    public function recordActualWeight(OrderItem $orderItem, ?float $actualWeightKg): void
+    {
+        $orderItem->update(['loaded_actual_weight_kg' => $actualWeightKg > 0 ? $actualWeightKg : null]);
+    }
+
     public function recordLoadedVariant(
         OrderItem $orderItem,
         ProductGramVariant $loadedVariant,

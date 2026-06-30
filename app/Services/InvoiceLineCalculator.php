@@ -51,6 +51,7 @@ class InvoiceLineCalculator
 
             return [
                 'order_item_id' => $item->id,
+                'article_code' => $item->product?->exact_article_code ?? '',
                 'product_name' => $item->product_name,
                 'unit' => $item->unit,
                 'ordered_quantity' => (float) $item->quantity,

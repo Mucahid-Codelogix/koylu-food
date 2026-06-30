@@ -10,6 +10,13 @@ return [
 
     'favicon' => 'images/brand/koylu-logo.png',
 
+    'address'    => 'Grobbendonkstraat 3 (5628 RE) te Eindhoven',
+    'phone'      => '0031 40 248 1979',
+    'iban'       => 'NL 41 ABNA 0608 3930 37',
+    'bic'        => 'ABNANL2A',
+    'vat_number' => 'NL 808966054B01',
+    'kvk'        => '17090406',
+
     'colors' => [
         'red' => '#E30613',
         'green' => '#007236',

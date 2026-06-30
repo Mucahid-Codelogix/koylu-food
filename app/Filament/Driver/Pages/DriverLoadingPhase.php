@@ -27,7 +27,7 @@ class DriverLoadingPhase extends Page
     /** @var array<int, array<string, mixed>> */
     public array $products = [];
 
-    /** @var array<int, array{loaded_gram_variant_id: int|null, substitution_reason: string}> */
+    /** @var array<int, array{loaded_gram_variant_id: int|null, substitution_reason: string, actual_weight_kg: string}> */
     public array $loadingData = [];
 
     public function mount(): void
@@ -61,14 +61,13 @@ class DriverLoadingPhase extends Page
     {
         foreach ($this->route->routeStops as $stop) {
             foreach ($stop->order->items as $item) {
-                if (! $item->isWholeChicken()) {
-                    continue;
-                }
-
                 $this->loadingData[$item->id] = [
                     'loaded_gram_variant_id' => $item->loaded_gram_variant_id
                         ?? $item->product_gram_variant_id,
                     'substitution_reason' => $item->loading_substitution_reason ?? '',
+                    'actual_weight_kg' => $item->loaded_actual_weight_kg !== null
+                        ? (string) $item->loaded_actual_weight_kg
+                        : '',
                 ];
             }
         }
@@ -196,8 +195,23 @@ class DriverLoadingPhase extends Page
         return count($this->products);
     }
 
+    private function saveActualWeightsForCurrentProduct(): void
+    {
+        $product = $this->getCurrentProduct();
+        $loadingService = app(OrderItemLoadingService::class);
+
+        foreach ($product['customers'] ?? [] as $row) {
+            $itemId = $row['order_item_id'];
+            $raw = $this->loadingData[$itemId]['actual_weight_kg'] ?? '';
+            $value = $raw !== '' ? (float) str_replace(',', '.', $raw) : null;
+            $loadingService->recordActualWeight(OrderItem::findOrFail($itemId), $value);
+        }
+    }
+
     public function nextProduct(): void
     {
+        $this->saveActualWeightsForCurrentProduct();
+
         if ($this->currentProductIndex < count($this->products) - 1) {
             $this->currentProductIndex++;
         }
@@ -205,6 +219,8 @@ class DriverLoadingPhase extends Page
 
     public function previousProduct(): void
     {
+        $this->saveActualWeightsForCurrentProduct();
+
         if ($this->currentProductIndex > 0) {
             $this->currentProductIndex--;
         }
@@ -212,6 +228,8 @@ class DriverLoadingPhase extends Page
 
     public function finishLoading(): void
     {
+        $this->saveActualWeightsForCurrentProduct();
+
         $loadingService = app(OrderItemLoadingService::class);
 
         foreach ($this->route->routeStops as $stop) {

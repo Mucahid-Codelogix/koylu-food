@@ -49,7 +49,7 @@
                                 <th class="w-8">#</th>
                                 <th>Klant</th>
                                 <th class="hidden sm:table-cell">Stad</th>
-                                <th class="text-right">Aantal</th>
+                                <th class="text-right">Aantal / Gewicht</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -73,7 +73,22 @@
                                                     · {{ number_format($row['ordered_total_weight_kg'] ?? 0, 2, ',', '.') }} kg
                                                 </p>
 
-                                                @if (($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false))
+                                                <div class="mt-2">
+                                            <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Werkelijk totaalgewicht</label>
+                                            <div class="mt-1 flex items-center gap-1">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    min="0"
+                                                    wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
+                                                    placeholder="0.000"
+                                                    class="w-28 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                                />
+                                                <span class="text-xs text-gray-400">kg</span>
+                                            </div>
+                                        </div>
+
+                                        @if (($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false))
                                                     <div>
                                                         <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Geladen variant</label>
                                                         <select
@@ -113,9 +128,20 @@
                                     </td>
                                     @if (! ($product['is_whole_chicken'] ?? false))
                                         <td class="text-gray-500 hidden sm:table-cell">{{ $row['city'] }}</td>
-                                        <td class="text-right font-semibold text-gray-800 dark:text-white tabular-nums">
-                                            {{ $row['quantity'] }}
-                                            <span class="text-xs font-normal text-gray-400">{{ $product['unit'] }}</span>
+                                        <td class="text-right tabular-nums">
+                                            <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $row['quantity'] }}</span>
+                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $product['unit'] }}</span>
+                                            <div class="mt-2 flex items-center justify-end gap-1">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    min="0"
+                                                    wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
+                                                    placeholder="0.000"
+                                                    class="w-24 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                                />
+                                                <span class="text-xs text-gray-400 shrink-0">kg</span>
+                                            </div>
                                         </td>
                                     @endif
                                 </tr>
@@ -124,9 +150,9 @@
                         <tfoot>
                             <tr class="bg-gray-50 dark:bg-gray-800/50">
                                 <td colspan="3" class="text-xs font-semibold text-gray-500 text-right uppercase tracking-wide">Totaal</td>
-                                <td class="text-right font-bold text-primary-600 tabular-nums">
-                                    {{ $product['total'] }}
-                                    <span class="text-xs font-normal">{{ $product['unit'] }}</span>
+                                <td class="text-right tabular-nums">
+                                    <span class="text-xl font-extrabold text-primary-600">{{ $product['total'] }}</span>
+                                    <span class="text-sm font-bold text-primary-500 ml-0.5">{{ $product['unit'] }}</span>
                                 </td>
                             </tr>
                         </tfoot>
@@ -191,7 +217,7 @@
                                     {{ $p['name'] }}
                                 </span>
                             </div>
-                            <span class="text-gray-400 text-xs shrink-0">{{ $p['total'] }} {{ $p['unit'] }}</span>
+                            <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">{{ $p['total'] }} {{ $p['unit'] }}</span>
                         </button>
                     @endforeach
                 </div>

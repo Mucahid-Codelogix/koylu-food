@@ -70,8 +70,10 @@ class OrderItemInfolist
 
                         TextEntry::make('loaded_total_weight_kg')
                             ->label('Geladen gewicht')
-                            ->suffix(' kg')
-                            ->numeric(decimalPlaces: 3)
+                            ->state(fn (OrderItem $record): ?string => number_format(
+                                (float) ($record->loaded_actual_weight_kg ?? $record->loaded_total_weight_kg ?? 0),
+                                3, ',', '.'
+                            ) . ' kg')
                             ->placeholder('-'),
 
                         TextEntry::make('loaded_at')

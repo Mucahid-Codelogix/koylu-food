@@ -79,6 +79,9 @@
                                 <p class="font-medium text-gray-800 dark:text-white truncate">{{ $item['product_name'] }}</p>
                                 <p class="text-xs text-gray-400 mt-0.5">
                                     Besteld: {{ $item['ordered_quantity'] }} {{ $item['unit'] }}
+                                    @if ($item['actual_weight_kg'] !== null)
+                                        · <span class="font-semibold text-gray-600 dark:text-gray-300">{{ number_format((float) $item['actual_weight_kg'], 3, ',', '.') }} kg</span>
+                                    @endif
                                 </p>
                             </div>
 

@@ -113,6 +113,7 @@ class DriverDeliveryPhase extends Page
                 'is_missed' => $existingItem ? $existingItem->delivered_quantity == 0 : false,
                 'missed_reason' => $existingItem?->missed_reason ?? '',
                 'return_note' => $existingItem?->return_note ?? '',
+                'actual_weight_kg' => $item->loaded_actual_weight_kg,
             ];
         }
 
