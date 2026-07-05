@@ -83,6 +83,11 @@
                                         · <span class="font-semibold text-gray-600 dark:text-gray-300">{{ number_format((float) $item['actual_weight_kg'], 3, ',', '.') }} kg</span>
                                     @endif
                                 </p>
+                                @if (filled($item['supplier_name'] ?? null))
+                                    <p class="text-xs text-gray-400 mt-0.5">
+                                        Leverancier: <span class="font-medium text-gray-600 dark:text-gray-300">{{ $item['supplier_name'] }}</span>
+                                    </p>
+                                @endif
                             </div>
 
                             <label class="flex items-center gap-2 cursor-pointer shrink-0">

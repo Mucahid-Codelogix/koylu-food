@@ -15,7 +15,7 @@ it('maps supplier fields to an exact creditor account payload', function () {
         'email' => 'inkoop@pluimvee.nl',
         'phone' => '050-7654321',
         'address' => 'Industrieweg 5, 9711AA Groningen',
-        'vat_number' => 'NL998877665B01',
+        'vat_number' => 'NL808966054B01',
         'kvk_number' => '12345678',
     ]);
 
@@ -26,7 +26,7 @@ it('maps supplier fields to an exact creditor account payload', function () {
         'SearchCode' => 'KOYLU-S-12',
         'Email' => 'inkoop@pluimvee.nl',
         'Phone' => '050-7654321',
-        'VATNumber' => 'NL998877665B01',
+        'VATNumber' => 'NL808966054B01',
         'ChamberOfCommerce' => '12345678',
         'Language' => 'NL',
         'PurchaseVATCode' => 'I2',

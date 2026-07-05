@@ -94,6 +94,8 @@ class DriverLoadingPhase extends Page
                         'total' => 0,
                         'total_kg' => 0,
                         'total_pieces' => 0,
+                        'supplier_breakdown' => [],
+                        'variant_breakdown' => [],
                         'customers' => [],
                     ];
                 }
@@ -106,6 +108,7 @@ class DriverLoadingPhase extends Page
                     'city' => $stop->order->customer->city,
                     'quantity' => $boxQty,
                     'unit' => $item->unit,
+                    'supplier_name' => $item->supplier_name,
                     'is_whole_chicken' => $item->isWholeChicken(),
                     'ordered_variant_label' => $item->productGramVariant?->displayLabel() ?? '—',
                     'ordered_pieces' => $item->ordered_pieces,
@@ -114,17 +117,52 @@ class DriverLoadingPhase extends Page
                     'gram_variants' => $item->product?->activeGramVariants ?? collect(),
                 ];
 
+                if (filled($item->supplier_name)) {
+                    $products[$productId]['supplier_breakdown'][$item->supplier_name] =
+                        ($products[$productId]['supplier_breakdown'][$item->supplier_name] ?? 0) + $boxQty;
+                }
+
                 $products[$productId]['total'] += $boxQty;
 
                 if ($item->isWholeChicken()) {
                     $products[$productId]['total_kg'] += (float) $item->ordered_total_weight_kg;
                     $products[$productId]['total_pieces'] += (float) $item->ordered_pieces;
+
+                    $variantKey = $item->product_gram_variant_id ?? 0;
+
+                    if (! isset($products[$productId]['variant_breakdown'][$variantKey])) {
+                        $products[$productId]['variant_breakdown'][$variantKey] = [
+                            'label' => $item->productGramVariant?->displayLabel() ?? '—',
+                            'weight_grams' => (int) ($item->productGramVariant?->weight_grams ?? 0),
+                            'boxes' => 0,
+                            'pieces' => 0,
+                            'kg' => 0,
+                            'supplier_breakdown' => [],
+                        ];
+                    }
+
+                    $products[$productId]['variant_breakdown'][$variantKey]['boxes'] += $boxQty;
+                    $products[$productId]['variant_breakdown'][$variantKey]['pieces'] += (float) $item->ordered_pieces;
+                    $products[$productId]['variant_breakdown'][$variantKey]['kg'] += (float) $item->ordered_total_weight_kg;
+
+                    if (filled($item->supplier_name)) {
+                        $products[$productId]['variant_breakdown'][$variantKey]['supplier_breakdown'][$item->supplier_name] =
+                            ($products[$productId]['variant_breakdown'][$variantKey]['supplier_breakdown'][$item->supplier_name] ?? 0) + $boxQty;
+                    }
                 }
             }
         }
 
         foreach ($products as &$product) {
             usort($product['customers'], fn ($a, $b) => $a['stop_order'] <=> $b['stop_order']);
+
+            if (! empty($product['variant_breakdown'])) {
+                uasort(
+                    $product['variant_breakdown'],
+                    fn ($a, $b) => $a['weight_grams'] <=> $b['weight_grams']
+                );
+                $product['variant_breakdown'] = array_values($product['variant_breakdown']);
+            }
         }
 
         return array_values($products);
@@ -193,6 +231,11 @@ class DriverLoadingPhase extends Page
     public function getTotalProducts(): int
     {
         return count($this->products);
+    }
+
+    public function formatBoxes(float|int|string $boxes): string
+    {
+        return rtrim(rtrim(number_format((float) $boxes, 2, ',', ''), '0'), ',');
     }
 
     private function saveActualWeightsForCurrentProduct(): void

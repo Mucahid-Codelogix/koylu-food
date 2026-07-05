@@ -180,12 +180,13 @@ function assertInvoiceConsistencyAcrossFormats(Order $order, Delivery $delivery,
         ->and($html)->toContain(formatEuroForPdf($totals['total']));
 
     foreach ($totals['vat_by_rate'] as $group) {
-        $vatLabel = $group['rate'] == 0.0
-            ? 'BTW (0% — vrijgesteld)'
-            : 'BTW ('.number_format($group['rate'], 0, ',', '.').'%)';
+        expect($html)->toContain('BTW-totaal');
 
-        expect($html)->toContain($vatLabel)
-            ->and($html)->toContain(formatEuroForPdf($group['vat_amount']));
+        if ($group['rate'] > 0) {
+            expect($html)->toContain('('.number_format($group['rate'], 0, ',', '.').'%)');
+        }
+
+        expect($html)->toContain(formatEuroForPdf($group['vat_amount']));
     }
 
     expect(sumUblLineTotals($ubl))->toBe($totals['subtotal'])

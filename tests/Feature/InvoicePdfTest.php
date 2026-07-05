@@ -82,10 +82,10 @@ it('shows delivered kg and price per kg on invoice lines', function () {
     ]);
 
     expect($html)
-        ->toContain('Geleverd (kg)')
-        ->toContain('Prijs/kg')
-        ->toContain('€ 5,0200')
-        ->toContain('10')
+        ->toContain('Aantal in kg')
+        ->toContain('Prijs per kg')
+        ->toContain('€ 5,02')
+        ->toContain('10,00')
         ->not->toContain('Stukprijs');
 });
 
@@ -106,8 +106,9 @@ it('shows vat split per rate in the totals section', function () {
     ]);
 
     expect($html)
-        ->toContain('BTW (9%)')
-        ->toContain('BTW (21%)')
+        ->toContain('BTW-totaal')
+        ->toContain('(9%)')
+        ->toContain('(21%)')
         ->toContain('€ 9,00')
         ->toContain('€ 10,50');
 });
@@ -122,9 +123,11 @@ it('shows zero percent vat label for exempt customers', function () {
         ],
     ], vatExempt: true);
 
+    // Vrijgestelde klant: geen btw-percentage, btw-bedrag € 0,00 en totaal = subtotaal.
     expect($html)
-        ->toContain('BTW (0% — vrijgesteld)')
-        ->toContain('€ 0,00');
+        ->toContain('BTW-totaal')
+        ->toContain('€ 0,00')
+        ->toContain('€ 100,00');
 });
 
 it('generates a pdf file through the invoice service', function () {

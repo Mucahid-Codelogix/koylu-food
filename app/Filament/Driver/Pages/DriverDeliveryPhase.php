@@ -107,6 +107,7 @@ class DriverDeliveryPhase extends Page
 
             $this->deliveryData[$item->id] = [
                 'product_name' => $item->product_name,
+                'supplier_name' => $item->supplier_name,
                 'unit' => $item->unit,
                 'ordered_quantity' => $item->quantity,
                 'delivered_quantity' => $existingItem?->delivered_quantity ?? $item->quantity,
@@ -153,7 +154,7 @@ class DriverDeliveryPhase extends Page
         }
 
         $signaturePath = $this->saveSignature($this->signature, $stop->id);
-        $deliveryStatus = $this->resolveDeliveryStatus();
+        $deliveryStatus = $this->resolveDeliveryStatus($stop);
 
         $delivery = Delivery::updateOrCreate(
             ['order_id' => $stop->order_id],
@@ -165,14 +166,16 @@ class DriverDeliveryPhase extends Page
             ]
         );
 
-        foreach ($this->deliveryData as $orderItemId => $data) {
+        foreach ($stop->order->items as $orderItem) {
+            $data = $this->deliveryLineFor($orderItem->id);
+
             DeliveryItem::updateOrCreate(
                 [
                     'delivery_id' => $delivery->id,
-                    'order_item_id' => $orderItemId,
+                    'order_item_id' => $orderItem->id,
                 ],
                 [
-                    'product_id' => $stop->order->items->find($orderItemId)->product_id,
+                    'product_id' => $orderItem->product_id,
                     'ordered_quantity' => $data['ordered_quantity'],
                     'delivered_quantity' => $data['is_missed'] ? 0 : $data['delivered_quantity'],
                     'missed_reason' => $data['is_missed'] ? $data['missed_reason'] : null,
@@ -338,9 +341,11 @@ class DriverDeliveryPhase extends Page
         $this->dispatch('stop-changed');
     }
 
-    protected function resolveDeliveryStatus(): DeliveryStatus
+    protected function resolveDeliveryStatus(RouteStop $stop): DeliveryStatus
     {
-        $lines = collect($this->deliveryData);
+        $lines = $stop->order->items->map(
+            fn ($item): array => $this->deliveryLineFor($item->id)
+        );
 
         $deliveredLines = $lines->filter(
             fn (array $data): bool => ! $data['is_missed'] && (float) $data['delivered_quantity'] > 0
@@ -359,6 +364,32 @@ class DriverDeliveryPhase extends Page
         });
 
         return $partial ? DeliveryStatus::PARTIAL : DeliveryStatus::DELIVERED;
+    }
+
+    /**
+     * Genormaliseerde leveringsregel voor één orderregel, met veilige defaults.
+     * Livewire kan onvolledige entries in $deliveryData achterlaten; door hier
+     * altijd alle sleutels te garanderen kunnen opslag en status niet crashen.
+     *
+     * @return array{
+     *     ordered_quantity: float|int|string,
+     *     delivered_quantity: float|int|string,
+     *     is_missed: bool,
+     *     missed_reason: string,
+     *     return_note: string,
+     * }
+     */
+    private function deliveryLineFor(int $orderItemId): array
+    {
+        $data = $this->deliveryData[$orderItemId] ?? [];
+
+        return [
+            'ordered_quantity' => $data['ordered_quantity'] ?? 0,
+            'delivered_quantity' => $data['delivered_quantity'] ?? 0,
+            'is_missed' => (bool) ($data['is_missed'] ?? false),
+            'missed_reason' => $data['missed_reason'] ?? '',
+            'return_note' => $data['return_note'] ?? '',
+        ];
     }
 
     /**

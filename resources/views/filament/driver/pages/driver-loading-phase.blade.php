@@ -25,6 +25,13 @@
                         <div>
                             <p class="koylu-card-hero-label">Huidig product</p>
                             <p class="text-white text-lg font-bold">{{ $product['name'] }}</p>
+                            @if (! empty($product['supplier_breakdown']))
+                                <p class="text-[11px] text-white/70 mt-0.5">
+                                    @foreach ($product['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                        {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
+                                    @endforeach
+                                </p>
+                            @endif
                         </div>
                     </div>
                     <div class="text-right">
@@ -41,6 +48,33 @@
                         @endif
                     </div>
                 </div>
+
+                @if (($product['is_whole_chicken'] ?? false) && ! empty($product['variant_breakdown']))
+                    <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Per gramvariant laden</p>
+                        <div class="space-y-1.5">
+                            @foreach ($product['variant_breakdown'] as $variant)
+                                <div class="flex items-start justify-between gap-3 text-sm">
+                                    <span class="text-gray-800 dark:text-gray-100">
+                                        <span class="font-semibold">{{ $variant['label'] }}</span>
+                                        @if (! empty($variant['supplier_breakdown']))
+                                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">
+                                                @foreach ($variant['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                                    {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
+                                                @endforeach
+                                            </span>
+                                        @endif
+                                    </span>
+                                    <span class="tabular-nums text-gray-600 dark:text-gray-300 text-right shrink-0">
+                                        <span class="text-base font-extrabold text-gray-900 dark:text-white">{{ $variant['boxes'] }}</span> doos
+                                        · {{ number_format($variant['pieces'], 0, ',', '.') }} st
+                                        · {{ number_format($variant['kg'], 2, ',', '.') }} kg
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
                 <div class="overflow-x-auto">
                     <table class="koylu-table">
@@ -63,6 +97,11 @@
                                     <td colspan="{{ ($product['is_whole_chicken'] ?? false) ? 2 : 1 }}">
                                         <p class="font-medium text-gray-800 dark:text-white">{{ $row['customer_name'] }}</p>
                                         <p class="text-xs text-gray-400">{{ $row['city'] }}</p>
+                                        @if (filled($row['supplier_name'] ?? null))
+                                            <p class="text-xs text-gray-400">
+                                                Leverancier: <span class="font-medium text-gray-600 dark:text-gray-300">{{ $row['supplier_name'] }}</span>
+                                            </p>
+                                        @endif
 
                                         @if ($row['is_whole_chicken'] ?? false)
                                             <div class="mt-3 space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60">
@@ -193,32 +232,64 @@
 
                 <div class="hidden divide-y divide-gray-50 dark:divide-gray-800/80 border-t border-gray-100 dark:border-gray-800">
                     @foreach ($products as $index => $p)
-                        <button
-                            wire:click="$set('currentProductIndex', {{ $index }})"
-                            @class([
-                                'w-full flex items-center justify-between px-5 py-3 text-sm transition',
-                                'bg-primary-50 dark:bg-primary-900/20' => $index === $this->currentProductIndex,
-                                'hover:bg-gray-50 dark:hover:bg-gray-800' => $index !== $this->currentProductIndex,
-                            ])
-                        >
-                            <div class="flex items-center gap-3">
-                                <span @class([
-                                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                                    'bg-primary-500 text-white' => $index === $this->currentProductIndex,
-                                    'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' => $index !== $this->currentProductIndex,
-                                ])>
-                                    {{ $index + 1 }}
-                                </span>
-                                <span @class([
-                                    'font-medium',
-                                    'text-primary-700 dark:text-primary-400' => $index === $this->currentProductIndex,
-                                    'text-gray-700 dark:text-gray-300' => $index !== $this->currentProductIndex,
-                                ])>
-                                    {{ $p['name'] }}
-                                </span>
-                            </div>
-                            <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">{{ $p['total'] }} {{ $p['unit'] }}</span>
-                        </button>
+                        <div>
+                            <button
+                                wire:click="$set('currentProductIndex', {{ $index }})"
+                                @class([
+                                    'w-full flex items-center justify-between px-5 py-3 text-sm transition',
+                                    'bg-primary-50 dark:bg-primary-900/20' => $index === $this->currentProductIndex,
+                                    'hover:bg-gray-50 dark:hover:bg-gray-800' => $index !== $this->currentProductIndex,
+                                ])
+                            >
+                                <div class="flex items-center gap-3">
+                                    <span @class([
+                                        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                                        'bg-primary-500 text-white' => $index === $this->currentProductIndex,
+                                        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' => $index !== $this->currentProductIndex,
+                                    ])>
+                                        {{ $index + 1 }}
+                                    </span>
+                                    <span @class([
+                                        'font-medium',
+                                        'text-primary-700 dark:text-primary-400' => $index === $this->currentProductIndex,
+                                        'text-gray-700 dark:text-gray-300' => $index !== $this->currentProductIndex,
+                                    ])>
+                                        {{ $p['name'] }}
+                                    </span>
+                                </div>
+                                <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">{{ $p['total'] }} {{ $p['unit'] }}</span>
+                            </button>
+
+                            @if (($p['is_whole_chicken'] ?? false) && ! empty($p['variant_breakdown']))
+                                <div class="px-5 pb-3 space-y-2">
+                                    @foreach ($p['variant_breakdown'] as $variant)
+                                        <div class="pl-9">
+                                            <div class="flex items-center justify-between gap-3 text-xs">
+                                                <span class="font-semibold text-gray-800 dark:text-gray-100">{{ $variant['label'] }}</span>
+                                                <span class="tabular-nums text-gray-500 dark:text-gray-400 shrink-0">
+                                                    {{ $variant['boxes'] }} doos · {{ number_format($variant['kg'], 2, ',', '.') }} kg
+                                                </span>
+                                            </div>
+                                            @foreach ($variant['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                                <div class="flex items-center justify-between gap-3 pl-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    <span>{{ $supplierName }}</span>
+                                                    <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif (! empty($p['supplier_breakdown']))
+                                <div class="px-5 pb-3 space-y-0.5">
+                                    @foreach ($p['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                        <div class="flex items-center justify-between gap-3 pl-9 text-xs text-gray-500 dark:text-gray-400">
+                                            <span>{{ $supplierName }}</span>
+                                            <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
             </x-koylu.card>
