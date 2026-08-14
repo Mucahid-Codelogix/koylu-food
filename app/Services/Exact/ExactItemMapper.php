@@ -21,7 +21,7 @@ class ExactItemMapper
             'IsPurchaseItem' => false,
         ];
 
-        if ($salesVatCode = self::salesVatCode($product)) {
+        if (filled($salesVatCode = self::salesVatCode($product))) {
             $payload['SalesVatCode'] = $salesVatCode;
         }
 
@@ -31,7 +31,7 @@ class ExactItemMapper
             $payload['StandardSalesPrice'] = (float) $pricePerKg;
         }
 
-        if ($itemGroup = config('exact.item.item_group')) {
+        if (filled($itemGroup = config('exact.item.item_group'))) {
             $payload['ItemGroup'] = $itemGroup;
         }
 

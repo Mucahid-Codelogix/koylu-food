@@ -74,6 +74,7 @@ it('slaat de levering op ook als deliveryData onvolledige of stray regels bevat'
     ]);
     $component->set('receiverName', 'Jan Jansen');
     $component->set('signature', 'data:image/png;base64,'.base64_encode('x'));
+    $component->set('driverSignature', 'data:image/png;base64,'.base64_encode('x'));
 
     $component->call('saveDelivery');
 

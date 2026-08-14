@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentMethod;
 use App\Models\Concerns\GuardsDeletion;
 use App\Services\InvoiceLineCalculator;
 use Database\Factories\InvoiceFactory;
@@ -27,11 +28,36 @@ class Invoice extends Model
     {
         return [
             'status' => InvoiceStatus::class,
+            'payment_method' => PaymentMethod::class,
             'invoice_date' => 'datetime',
             'sent_at' => 'datetime',
+            'paid_at' => 'datetime',
             'due_date' => 'datetime',
             'exact_synced_at' => 'datetime',
+            'exact_cash_entry_at' => 'datetime',
+            'exact_matched_at' => 'datetime',
         ];
+    }
+
+    public function isMatchedInExact(): bool
+    {
+        return $this->exact_matched_at !== null;
+    }
+
+    /**
+     * Of de contante betaling van deze factuur afgeletterd kan worden in Exact.
+     */
+    public function canBeMatchedInExact(): bool
+    {
+        return $this->isPaidInCash()
+            && ! $this->isMatchedInExact()
+            && filled($this->exact_document_number)
+            && filled($this->exact_cash_entry_id);
+    }
+
+    public function isPaidInCash(): bool
+    {
+        return $this->payment_method === PaymentMethod::CASH;
     }
 
     public function order()

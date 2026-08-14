@@ -25,6 +25,13 @@
                         <div>
                             <p class="koylu-card-hero-label">Huidig product</p>
                             <p class="text-white text-lg font-bold">{{ $product['name'] }}</p>
+                            @if (($product['is_whole_chicken'] ?? false) && ! empty($product['variant_breakdown']))
+                                <p class="text-xs font-semibold text-white/90 mt-0.5">
+                                    @foreach ($product['variant_breakdown'] as $variant)
+                                        {{ $variant['label'] }}{{ $loop->last ? '' : ' · ' }}
+                                    @endforeach
+                                </p>
+                            @endif
                             @if (! empty($product['supplier_breakdown']))
                                 <p class="text-[11px] text-white/70 mt-0.5">
                                     @foreach ($product['supplier_breakdown'] as $supplierName => $supplierBoxes)
@@ -94,7 +101,7 @@
                                             {{ $row['stop_order'] }}
                                         </span>
                                     </td>
-                                    <td colspan="{{ ($product['is_whole_chicken'] ?? false) ? 2 : 1 }}">
+                                    <td colspan="{{ ($product['is_whole_chicken'] ?? false) ? 2 : 1 }}" class="align-top">
                                         <p class="font-medium text-gray-800 dark:text-white">{{ $row['customer_name'] }}</p>
                                         <p class="text-xs text-gray-400">{{ $row['city'] }}</p>
                                         @if (filled($row['supplier_name'] ?? null))
@@ -105,12 +112,22 @@
 
                                         @if ($row['is_whole_chicken'] ?? false)
                                             <div class="mt-3 space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60">
-                                                <p class="text-xs text-gray-500">
-                                                    Besteld: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $row['ordered_variant_label'] }}</span>
-                                                    · {{ $row['quantity'] }} doos
-                                                    · {{ number_format($row['ordered_pieces'] ?? 0, 0, ',', '.') }} st
-                                                    · {{ number_format($row['ordered_total_weight_kg'] ?? 0, 2, ',', '.') }} kg
-                                                </p>
+                                                @if (($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false))
+                                                    <p class="text-xs text-gray-500">
+                                                        Besteld: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $row['ordered_variant_label'] }}</span>
+                                                        · {{ $row['quantity'] }} doos
+                                                    </p>
+                                                @endif
+
+                                                <div>
+                                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Geladen aantal dozen</label>
+                                                    <x-koylu.loaded-quantity-input
+                                                        :order-item-id="$row['order_item_id']"
+                                                        :ordered-quantity="$row['quantity']"
+                                                        :is-corrected="$this->isQuantityCorrected($row['order_item_id'], $row['quantity'])"
+                                                        class="mt-1 [&_label]:hidden [&_input]:w-full [&_input]:text-left [&>div]:justify-start"
+                                                    />
+                                                </div>
 
                                                 <div class="mt-2">
                                             <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Werkelijk totaalgewicht</label>
@@ -165,11 +182,30 @@
                                             </div>
                                         @endif
                                     </td>
-                                    @if (! ($product['is_whole_chicken'] ?? false))
-                                        <td class="text-gray-500 hidden sm:table-cell">{{ $row['city'] }}</td>
-                                        <td class="text-right tabular-nums">
+                                    @if ($product['is_whole_chicken'] ?? false)
+                                        <td class="text-right tabular-nums align-top">
                                             <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $row['quantity'] }}</span>
+                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">doos</span>
+                                            <p class="mt-0.5 text-sm font-bold text-primary-600 dark:text-primary-400">
+                                                {{ $row['ordered_variant_label'] }}
+                                            </p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                                {{ number_format($row['ordered_pieces'] ?? 0, 0, ',', '.') }} st
+                                                · {{ number_format($row['ordered_total_weight_kg'] ?? 0, 2, ',', '.') }} kg
+                                            </p>
+                                        </td>
+                                    @else
+                                        <td class="text-gray-500 hidden sm:table-cell">{{ $row['city'] }}</td>
+                                        <td class="text-right tabular-nums align-top">
+                                            <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($row['quantity']) }}</span>
                                             <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $product['unit'] }}</span>
+
+                                            <x-koylu.loaded-quantity-input
+                                                :order-item-id="$row['order_item_id']"
+                                                :ordered-quantity="$row['quantity']"
+                                                :is-corrected="$this->isQuantityCorrected($row['order_item_id'], $row['quantity'])"
+                                            />
+
                                             <div class="mt-2 flex items-center justify-end gap-1">
                                                 <input
                                                     type="number"
@@ -191,12 +227,36 @@
                                 <td colspan="3" class="text-xs font-semibold text-gray-500 text-right uppercase tracking-wide">Totaal</td>
                                 <td class="text-right tabular-nums">
                                     <span class="text-xl font-extrabold text-primary-600">{{ $product['total'] }}</span>
-                                    <span class="text-sm font-bold text-primary-500 ml-0.5">{{ $product['unit'] }}</span>
+                                    <span class="text-sm font-bold text-primary-500 ml-0.5">
+                                        {{ ($product['is_whole_chicken'] ?? false) ? 'doos' : $product['unit'] }}
+                                    </span>
+                                    @if ($product['is_whole_chicken'] ?? false)
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ number_format($product['total_pieces'] ?? 0, 0, ',', '.') }} st
+                                            · {{ number_format($product['total_kg'] ?? 0, 2, ',', '.') }} kg
+                                        </p>
+                                    @endif
                                 </td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
+            </x-koylu.card>
+
+            <x-koylu.card>
+                <a
+                    href="{{ route('leverbon.route', $this->route) }}"
+                    target="_blank"
+                    class="w-full flex items-center justify-between px-5 py-4"
+                >
+                    <div class="flex items-center gap-2">
+                        <x-heroicon-o-printer class="w-4 h-4 text-gray-400" />
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                            Leverbonnen printen ({{ $this->route->routeStops->count() }} stops)
+                        </span>
+                    </div>
+                    <x-heroicon-o-arrow-down-tray class="w-4 h-4 text-gray-400" />
+                </a>
             </x-koylu.card>
 
             <div class="grid grid-cols-2 gap-3">
@@ -257,7 +317,9 @@
                                         {{ $p['name'] }}
                                     </span>
                                 </div>
-                                <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">{{ $p['total'] }} {{ $p['unit'] }}</span>
+                                <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">
+                                    {{ $p['total'] }} {{ ($p['is_whole_chicken'] ?? false) ? 'doos' : $p['unit'] }}
+                                </span>
                             </button>
 
                             @if (($p['is_whole_chicken'] ?? false) && ! empty($p['variant_breakdown']))

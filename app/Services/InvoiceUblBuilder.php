@@ -119,11 +119,17 @@ class InvoiceUblBuilder
     {
         $vatCode = $this->ublVatCode($line['vat_rate']);
         $productName = $this->escape($line['product_name']);
+        $isCrateDeposit = ($line['type'] ?? InvoiceLineCalculator::TYPE_PRODUCT) === InvoiceLineCalculator::TYPE_CRATE_DEPOSIT;
+
+        /** Statiegeld wordt per stuk gefactureerd (UN/ECE-code H87), producten per kilogram. */
+        $unitCode = $isCrateDeposit ? 'H87' : 'KGM';
+        $quantity = $isCrateDeposit ? $line['billing_quantity'] : $line['delivered_kg'];
+        $unitPrice = $isCrateDeposit ? $line['billing_unit_price'] : $line['price_per_kg'];
 
         return '
     <cac:InvoiceLine>
         <cbc:ID>'.$lineId.'</cbc:ID>
-        <cbc:InvoicedQuantity unitCode="KGM">'.$this->quantity($line['delivered_kg']).'</cbc:InvoicedQuantity>
+        <cbc:InvoicedQuantity unitCode="'.$unitCode.'">'.$this->quantity($quantity).'</cbc:InvoicedQuantity>
         <cbc:LineExtensionAmount currencyID="EUR">'.$this->money($line['line_subtotal']).'</cbc:LineExtensionAmount>
         <cac:TaxTotal>
             <cbc:TaxAmount currencyID="EUR">'.$this->money($line['line_vat']).'</cbc:TaxAmount>
@@ -138,7 +144,7 @@ class InvoiceUblBuilder
             </cac:ClassifiedTaxCategory>
         </cac:Item>
         <cac:Price>
-            <cbc:PriceAmount currencyID="EUR">'.$this->pricePerKg($line['price_per_kg']).'</cbc:PriceAmount>
+            <cbc:PriceAmount currencyID="EUR">'.$this->pricePerKg($unitPrice).'</cbc:PriceAmount>
         </cac:Price>
     </cac:InvoiceLine>';
     }

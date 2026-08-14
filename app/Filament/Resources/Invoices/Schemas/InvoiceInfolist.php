@@ -32,6 +32,15 @@ class InvoiceInfolist
                             ->label('Status')
                             ->badge(),
 
+                        TextEntry::make('payment_method')
+                            ->label('Betaalwijze')
+                            ->badge(),
+
+                        TextEntry::make('paid_at')
+                            ->label('Betaald op')
+                            ->dateTime('d-m-Y H:i')
+                            ->placeholder('-'),
+
                         TextEntry::make('invoice_date')
                             ->label('Factuurdatum')
                             ->date('d-m-Y')

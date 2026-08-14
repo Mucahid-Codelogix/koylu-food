@@ -14,6 +14,7 @@ class InvoicesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('display_invoice_number')
                     ->label('Factuurnummer')
@@ -35,6 +36,10 @@ class InvoicesTable
                             return 'Fout';
                         }
 
+                        if ($record->isMatchedInExact()) {
+                            return 'Afgeletterd';
+                        }
+
                         if ($record->isSyncedToExact()) {
                             return 'Geboekt';
                         }
@@ -52,7 +57,7 @@ class InvoicesTable
 
                         return 'gray';
                     })
-                    ->tooltip(fn (Invoice $record): ?string => $record->exact_sync_error),
+                    ->tooltip(fn (Invoice $record): ?string => $record->exact_sync_error ?? $record->exact_match_error),
 
                 TextColumn::make('order.customer.company_name')
                     ->label('Klant')
@@ -80,6 +85,11 @@ class InvoicesTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge(),
+
+                TextColumn::make('payment_method')
+                    ->label('Betaalwijze')
+                    ->badge()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('status')

@@ -26,7 +26,7 @@ class ExactCustomerMapper
             'Language' => self::languageCode($customer),
         ];
 
-        if ($salesVatCode = self::salesVatCode($customer)) {
+        if (filled($salesVatCode = self::salesVatCode($customer))) {
             $payload['SalesVATCode'] = $salesVatCode;
         }
 

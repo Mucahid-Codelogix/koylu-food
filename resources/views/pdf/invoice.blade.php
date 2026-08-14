@@ -268,19 +268,31 @@
     @foreach ($lines as $line)
         @php
             $orderedKg = round($line['ordered_quantity'] * $line['box_weight_kg'], 3);
+            $isCrateDeposit = ($line['type'] ?? 'product') === 'crate_deposit';
         @endphp
         <tr>
             <td>{{ $line['article_code'] ?: '—' }}</td>
             <td>
                 {{ $line['product_name'] }}
-                @if ($line['is_missed'])
+                @if ($isCrateDeposit)
+                    <span class="item-note">
+                        {{ rtrim(rtrim(number_format(abs($line['billing_quantity']), 2, ',', ''), '0'), ',') }} kratten
+                        × € {{ number_format($line['billing_unit_price'], 2, ',', '.') }} — btw-vrijgesteld
+                    </span>
+                @elseif ($line['is_missed'])
                     <span class="item-missed">Niet geleverd — {{ $line['missed_reason'] }}</span>
                 @elseif ($line['delivered_kg'] != $orderedKg)
                     <span class="item-note">Afwijking: {{ rtrim(rtrim(number_format($orderedKg - $line['delivered_kg'], 3, ',', '.'), '0'), ',') }} kg t.o.v. bestelling</span>
                 @endif
             </td>
-            <td class="text-right">{{ number_format($line['delivered_kg'], 2, ',', '.') }}</td>
-            <td class="text-right nowrap">€ {{ number_format($line['price_per_kg'], 2, ',', '.') }}</td>
+            <td class="text-right">
+                @if ($isCrateDeposit)
+                    {{ rtrim(rtrim(number_format($line['billing_quantity'], 2, ',', ''), '0'), ',') }} st
+                @else
+                    {{ number_format($line['delivered_kg'], 2, ',', '.') }}
+                @endif
+            </td>
+            <td class="text-right nowrap">€ {{ number_format($isCrateDeposit ? $line['billing_unit_price'] : $line['price_per_kg'], 2, ',', '.') }}</td>
             <td class="text-right nowrap">€ {{ number_format($line['line_subtotal'], 2, ',', '.') }}</td>
         </tr>
     @endforeach
@@ -300,6 +312,8 @@
                     BTW-totaal
                     @if ($vatGroup['rate'] > 0)
                         ({{ number_format($vatGroup['rate'], 0) }}%)
+                    @else
+                        (0% — vrijgesteld)
                     @endif
                 </td>
                 <td>€ {{ number_format($vatGroup['vat_amount'], 2, ',', '.') }}</td>

@@ -12,6 +12,37 @@ class OrderItemLoadingService
         $orderItem->update(['loaded_actual_weight_kg' => $actualWeightKg > 0 ? $actualWeightKg : null]);
     }
 
+    /**
+     * Leg vast hoeveel verpakkingen (dozen, bakjes, kratten) er werkelijk geladen zijn.
+     * Een leeg of ongeldig aantal betekent: geladen zoals besteld.
+     */
+    public function recordLoadedQuantity(OrderItem $orderItem, ?float $loadedQuantity): OrderItem
+    {
+        $orderedQuantity = (float) $orderItem->quantity;
+        $isCorrection = $loadedQuantity !== null
+            && $loadedQuantity >= 0
+            && abs($loadedQuantity - $orderedQuantity) > 0.001;
+
+        $attributes = [
+            'loaded_packaging_quantity' => $isCorrection ? $loadedQuantity : null,
+            'loaded_at' => $orderItem->loaded_at ?? now(),
+        ];
+
+        if ($orderItem->isWholeChicken()) {
+            $variant = $orderItem->loadedGramVariant ?? $orderItem->productGramVariant;
+            $effectiveQuantity = $isCorrection ? $loadedQuantity : $orderedQuantity;
+
+            if ($variant !== null) {
+                $attributes['loaded_pieces'] = $variant->calculateOrderedPieces($effectiveQuantity);
+                $attributes['loaded_total_weight_kg'] = $variant->calculateTotalWeightKg($effectiveQuantity);
+            }
+        }
+
+        $orderItem->update($attributes);
+
+        return $orderItem->fresh();
+    }
+
     public function recordLoadedVariant(
         OrderItem $orderItem,
         ProductGramVariant $loadedVariant,

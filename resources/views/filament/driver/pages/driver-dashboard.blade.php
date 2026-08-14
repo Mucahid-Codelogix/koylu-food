@@ -81,9 +81,29 @@
                                 <x-koylu.badge :variant="$badgeVariant" class="shrink-0">
                                     {{ $stop->status->getLabel() }}
                                 </x-koylu.badge>
+
+                                <a
+                                    href="{{ $stop->order->delivery
+                                        ? route('leverbon.download', $stop->order->delivery)
+                                        : route('leverbon.concept', $stop->order) }}"
+                                    target="_blank"
+                                    title="{{ $stop->order->delivery ? 'Definitieve leverbon' : 'Werkbon' }}"
+                                    class="shrink-0 p-2 -m-1 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                >
+                                    <x-heroicon-o-document-arrow-down class="w-5 h-5" />
+                                </a>
                             </div>
                         @endforeach
                     </div>
+
+                    <a
+                        href="{{ route('leverbon.route', $route) }}"
+                        target="_blank"
+                        class="koylu-btn-secondary w-full"
+                    >
+                        <x-heroicon-o-printer class="w-4 h-4" />
+                        Alle leverbonnen printen
+                    </a>
 
                     <div class="space-y-2 pt-1">
                         @if ($route->status === \App\Enums\RouteStatus::PLANNED)
@@ -193,6 +213,15 @@
                                     </p>
                                 @endif
                             </div>
+
+                            <a
+                                href="{{ route('leverbon.route', $pastRoute) }}"
+                                target="_blank"
+                                title="Leverbonnen van deze route"
+                                class="shrink-0 p-2 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                            >
+                                <x-heroicon-o-document-arrow-down class="w-5 h-5" />
+                            </a>
                         </li>
                     @endforeach
                 </ul>

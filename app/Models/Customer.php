@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\GuardsDeletion;
 use App\Observers\CustomerObserver;
+use App\Services\AppSettings;
 use App\Services\ProductPricingService;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -26,6 +27,7 @@ class Customer extends Model
     {
         return [
             'is_vat_exempt' => 'boolean',
+            'crate_deposit_price' => 'decimal:2',
             'is_active' => 'boolean',
             'exact_synced_at' => 'datetime',
         ];
@@ -49,6 +51,19 @@ class Customer extends Model
     public function productPrices(): HasMany
     {
         return $this->hasMany(CustomerProductPrice::class);
+    }
+
+    /**
+     * De klantprijs voor statiegeld is leidend; is die niet ingevuld,
+     * dan geldt de algemene prijs uit de instellingen.
+     */
+    public function crateDepositPrice(): float
+    {
+        if ($this->crate_deposit_price !== null) {
+            return (float) $this->crate_deposit_price;
+        }
+
+        return app(AppSettings::class)->crateDepositPrice();
     }
 
     public function pricePerKgForProduct(Product $product, ?ProductSupplier $productSupplier = null): float

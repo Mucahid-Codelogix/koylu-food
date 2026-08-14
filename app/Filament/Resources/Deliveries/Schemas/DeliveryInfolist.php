@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Deliveries\Schemas;
 
 use App\Support\DeliveryDeviationSummary;
+use App\Support\UploadStorage;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -38,10 +40,21 @@ class DeliveryInfolist
                             ->label('Ontvanger')
                             ->placeholder('-'),
 
-                        TextEntry::make('signature_path')
-                            ->label('Handtekening')
-                            ->placeholder('Geen handtekening')
-                            ->columnSpanFull(),
+                        TextEntry::make('driver_name')
+                            ->label('Bezorger')
+                            ->placeholder('-'),
+
+                        ImageEntry::make('signature_path')
+                            ->label('Handtekening ontvanger')
+                            ->disk(UploadStorage::diskName())
+                            ->height(120)
+                            ->placeholder('Geen handtekening'),
+
+                        ImageEntry::make('driver_signature_path')
+                            ->label('Handtekening bezorger')
+                            ->disk(UploadStorage::diskName())
+                            ->height(120)
+                            ->placeholder('Geen handtekening'),
                     ]),
 
                 Section::make('Leveringsregels')

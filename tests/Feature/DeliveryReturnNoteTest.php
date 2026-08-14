@@ -51,6 +51,7 @@ it('stores return notes on partial delivery items', function () {
         ->set('deliveryData.'.$orderItem->id.'.return_note', '2 colli retour, beschadigd')
         ->set('receiverName', 'Jan Jansen')
         ->set('signature', 'data:image/png;base64,iVBORw0KGgo=')
+        ->set('driverSignature', 'data:image/png;base64,iVBORw0KGgo=')
         ->call('saveDelivery')
         ->assertNotified();
 
@@ -114,6 +115,7 @@ it('does not store return notes when delivery is complete', function () {
         ->set('deliveryData.'.$orderItem->id.'.return_note', 'Zou niet opgeslagen moeten worden')
         ->set('receiverName', 'Jan Jansen')
         ->set('signature', 'data:image/png;base64,iVBORw0KGgo=')
+        ->set('driverSignature', 'data:image/png;base64,iVBORw0KGgo=')
         ->call('saveDelivery');
 
     $deliveryItem = DeliveryItem::query()
@@ -157,6 +159,7 @@ it('can navigate back to a delivered stop and forward again', function () {
         ->assertSet('currentStopIndex', 0)
         ->set('receiverName', 'Jan Jansen')
         ->set('signature', 'data:image/png;base64,iVBORw0KGgo=')
+        ->set('driverSignature', 'data:image/png;base64,iVBORw0KGgo=')
         ->call('saveDelivery')
         ->assertSet('currentStopIndex', 1)
         ->call('previousStop')
@@ -201,6 +204,7 @@ it('can resume a skipped stop and complete the delivery', function () {
         ->assertNotified()
         ->set('receiverName', 'Jan Jansen')
         ->set('signature', 'data:image/png;base64,iVBORw0KGgo=')
+        ->set('driverSignature', 'data:image/png;base64,iVBORw0KGgo=')
         ->call('saveDelivery')
         ->assertNotified();
 

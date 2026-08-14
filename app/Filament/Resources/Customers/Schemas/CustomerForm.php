@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Customers\Schemas;
 
+use App\Services\AppSettings;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -99,6 +100,15 @@ class CustomerForm
                         Toggle::make('is_vat_exempt')
                             ->label('BTW vrijgesteld')
                             ->default(false),
+
+                        TextInput::make('crate_deposit_price')
+                            ->label('Statiegeld per krat')
+                            ->prefix('€')
+                            ->numeric()
+                            ->minValue(0)
+                            ->step(0.01)
+                            ->placeholder(fn (): string => number_format(app(AppSettings::class)->crateDepositPrice(), 2, ',', '.'))
+                            ->helperText('Laat leeg om de algemene statiegeldprijs uit Instellingen te gebruiken.'),
 
                     ]),
             ]);

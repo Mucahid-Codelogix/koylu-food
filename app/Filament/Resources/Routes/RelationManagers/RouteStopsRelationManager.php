@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Routes\RelationManagers;
 
+use App\Enums\RouteStatus;
 use App\Enums\RouteStopStatus;
 use App\Models\Order;
+use App\Models\Route;
 use App\Services\RouteWorkflowService;
 use DomainException;
 use Filament\Actions\BulkActionGroup;
@@ -24,6 +26,26 @@ use Filament\Tables\Table;
 class RouteStopsRelationManager extends RelationManager
 {
     protected static string $relationship = 'routeStops';
+
+    /**
+     * Stops zijn ook direct bewerkbaar vanaf de view-pagina van een route,
+     * zodat de planner niet eerst op "Bewerken" hoeft te klikken.
+     */
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Een afgeronde route is administratief afgesloten en mag niet meer wijzigen.
+     */
+    protected function routeIsEditable(): bool
+    {
+        /** @var Route $route */
+        $route = $this->getOwnerRecord();
+
+        return $route->status !== RouteStatus::COMPLETED;
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -116,7 +138,7 @@ class RouteStopsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('stop_order')
-            ->reorderable('stop_order')
+            ->reorderable('stop_order', condition: $this->routeIsEditable())
             ->defaultSort('stop_order')
             ->columns([
                 TextColumn::make('order.order_number')
@@ -147,6 +169,8 @@ class RouteStopsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->label('Stop toevoegen')
+                    ->visible(fn (): bool => $this->routeIsEditable())
                     ->action(function (array $data): void {
                         $route = $this->getOwnerRecord();
                         $order = Order::query()->findOrFail($data['order_id']);
@@ -170,12 +194,15 @@ class RouteStopsRelationManager extends RelationManager
             ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn (): bool => $this->routeIsEditable()),
+                DeleteAction::make()
+                    ->visible(fn (): bool => $this->routeIsEditable()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => $this->routeIsEditable()),
                 ]),
             ]);
     }

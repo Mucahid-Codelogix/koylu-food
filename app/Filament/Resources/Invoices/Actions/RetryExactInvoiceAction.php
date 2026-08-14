@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Actions;
 
+use App\Jobs\ProcessCashPaidInvoice;
 use App\Jobs\PushInvoiceToExact;
 use App\Models\Invoice;
 use App\Services\Exact\ExactOnlineClient;
@@ -21,11 +22,18 @@ class RetryExactInvoiceAction
                 && app(ExactOnlineClient::class)->isConnected())
             ->requiresConfirmation()
             ->modalHeading('Opnieuw proberen in Exact')
-            ->modalDescription('De mislukte boeking wordt opnieuw in de wachtrij gezet.')
+            ->modalDescription(fn (Invoice $record): string => $record->isPaidInCash()
+                ? 'De factuur wordt opnieuw geboekt in Exact, inclusief kasboeking, en opnieuw naar de klant gemaild.'
+                : 'De mislukte boeking wordt opnieuw in de wachtrij gezet.')
             ->action(function (Invoice $record): void {
                 $record->updateQuietly(['exact_sync_error' => null]);
 
-                PushInvoiceToExact::dispatch($record);
+                /** Contante facturen hebben hun eigen afhandeling: boeken, kasboeking én mail. */
+                if ($record->isPaidInCash()) {
+                    ProcessCashPaidInvoice::dispatch($record);
+                } else {
+                    PushInvoiceToExact::dispatch($record);
+                }
 
                 Notification::make()
                     ->title('Boeking opnieuw gestart')

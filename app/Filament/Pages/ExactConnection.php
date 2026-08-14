@@ -34,7 +34,7 @@ class ExactConnection extends Page
 
     public bool $isConnected = false;
 
-    public ?string $expiresAt = null;
+    public ?string $lastRefreshedAt = null;
 
     public ?int $division = null;
 
@@ -106,7 +106,7 @@ class ExactConnection extends Page
         $token = ExactToken::stored();
 
         $this->isConnected = $client->isConnected();
-        $this->expiresAt = $token?->expires_at?->timezone(config('app.timezone'))->format('d-m-Y H:i');
+        $this->lastRefreshedAt = $token?->updated_at?->timezone(config('app.timezone'))->format('d-m-Y H:i');
         $this->division = $token?->division;
         $this->configuredDivision = config('exact.division') ? (string) config('exact.division') : null;
     }

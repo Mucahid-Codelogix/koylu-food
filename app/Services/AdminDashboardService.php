@@ -52,7 +52,7 @@ class AdminDashboardService
      *     driver_routes_overflow: int,
      *     exact: array{
      *         is_connected: bool,
-     *         expires_at: ?string,
+     *         last_refreshed_at: ?string,
      *         division: ?int,
      *         sync_errors_count: int,
      *         failed_logs_count: int,
@@ -164,7 +164,7 @@ class AdminDashboardService
     /**
      * @return array{
      *     is_connected: bool,
-     *     expires_at: ?string,
+     *     last_refreshed_at: ?string,
      *     division: ?int,
      *     sync_errors_count: int,
      *     failed_logs_count: int,
@@ -176,7 +176,12 @@ class AdminDashboardService
 
         return [
             'is_connected' => app(ExactOnlineClient::class)->isConnected(),
-            'expires_at' => $token?->expires_at?->timezone(config('app.timezone'))->format('d-m-Y H:i'),
+            /**
+             * Het toegangstoken leeft maar tien minuten en wordt bij elke call
+             * automatisch vernieuwd. Voor de status is alleen relevant wanneer de
+             * koppeling voor het laatst contact had.
+             */
+            'last_refreshed_at' => $token?->updated_at?->timezone(config('app.timezone'))->format('d-m-Y H:i'),
             'division' => $token?->division,
             'sync_errors_count' => Customer::query()->whereNotNull('exact_sync_error')->count()
                 + Product::query()->whereNotNull('exact_sync_error')->count()

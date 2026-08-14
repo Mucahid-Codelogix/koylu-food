@@ -83,6 +83,11 @@
                                         · <span class="font-semibold text-gray-600 dark:text-gray-300">{{ number_format((float) $item['actual_weight_kg'], 3, ',', '.') }} kg</span>
                                     @endif
                                 </p>
+                                @if (($item['loaded_quantity'] ?? null) !== null)
+                                    <p class="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                                        Geladen: {{ rtrim(rtrim(number_format((float) $item['loaded_quantity'], 2, ',', ''), '0'), ',') }} {{ $item['unit'] }}
+                                    </p>
+                                @endif
                                 @if (filled($item['supplier_name'] ?? null))
                                     <p class="text-xs text-gray-400 mt-0.5">
                                         Leverancier: <span class="font-medium text-gray-600 dark:text-gray-300">{{ $item['supplier_name'] }}</span>
@@ -183,6 +188,50 @@
         <x-koylu.card>
             <x-slot:header>
                 <div class="flex items-center gap-2">
+                    <x-heroicon-o-banknotes class="w-4 h-4 text-gray-400" />
+                    <x-koylu.section-heading title="Betaling" />
+                </div>
+            </x-slot:header>
+
+            <div class="koylu-card-body space-y-4">
+                <label class="flex items-center justify-between gap-3 cursor-pointer">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Contant betaald
+                        <span class="block text-xs font-normal text-gray-400">
+                            De factuur wordt direct aangemaakt en naar de klant gemaild.
+                        </span>
+                    </span>
+                    <input
+                        type="checkbox"
+                        wire:model.live="paidInCash"
+                        @disabled($isHandled)
+                        class="rounded border-gray-300 text-koylu-green focus:ring-koylu-green disabled:opacity-50 w-5 h-5 shrink-0"
+                    />
+                </label>
+
+                @if ($paidInCash)
+                    <div>
+                        <label class="text-xs font-medium text-gray-500">Ontvangen bedrag (optioneel)</label>
+                        <div class="mt-1 flex items-center gap-2">
+                            <span class="text-sm text-gray-400">€</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                wire:model="cashAmount"
+                                @disabled($isHandled)
+                                placeholder="Laat leeg voor het volledige factuurbedrag"
+                                class="w-full p-2 rounded-xl border-gray-200 text-sm shadow-sm focus:border-primary-400 focus:ring-primary-400 disabled:bg-gray-50 disabled:text-gray-400 dark:bg-gray-900 dark:border-gray-700"
+                            />
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </x-koylu.card>
+
+        <x-koylu.card>
+            <x-slot:header>
+                <div class="flex items-center gap-2">
                     <x-heroicon-o-pencil class="w-4 h-4 text-gray-400" />
                     <x-koylu.section-heading title="Handtekening" />
                 </div>
@@ -203,50 +252,43 @@
                 @if ($isHandled)
                     @php
                         $existingDelivery = \App\Models\Delivery::where('order_id', $stop->order_id)->first();
+                        $registeredSignatures = [
+                            'Ontvanger' => $existingDelivery?->signature_path,
+                            'Bezorger' => $existingDelivery?->driver_signature_path,
+                        ];
                     @endphp
-                    @if ($existingDelivery?->signature_path)
+
+                    @forelse (array_filter($registeredSignatures) as $label => $path)
                         <div>
-                            <label class="text-xs font-medium text-gray-500 block mb-2">Geregistreerde handtekening</label>
+                            <label class="text-xs font-medium text-gray-500 block mb-2">Handtekening {{ strtolower($label) }}</label>
                             <div class="border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 p-2">
                                 <img
-                                    src="{{ \App\Support\UploadStorage::url($existingDelivery->signature_path) }}"
-                                    alt="Handtekening"
+                                    src="{{ \App\Support\UploadStorage::url($path) }}"
+                                    alt="Handtekening {{ $label }}"
                                     class="w-full object-contain max-h-36 rounded-lg"
                                 />
                             </div>
                         </div>
-                    @else
+                    @empty
                         <div class="flex items-center gap-2 text-gray-400 text-sm">
                             <x-heroicon-o-exclamation-circle class="w-4 h-4" />
                             Geen handtekening gevonden
                         </div>
-                    @endif
+                    @endforelse
                 @else
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 block mb-2">Teken hieronder</label>
-                        <div wire:ignore>
-                            <canvas
-                                id="signature-pad"
-                                class="block w-full h-40 max-w-full border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 touch-none"
-                            ></canvas>
-                        </div>
-                        <div class="flex items-center justify-between mt-2">
-                            <button
-                                type="button"
-                                onclick="clearSignature()"
-                                class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
-                            >
-                                <x-heroicon-o-arrow-path class="w-3.5 h-3.5" />
-                                Opnieuw tekenen
-                            </button>
-                            @if ($signature)
-                                <span class="flex items-center gap-1.5 text-xs text-koylu-green font-medium">
-                                    <x-heroicon-s-check-circle class="w-3.5 h-3.5" />
-                                    Handtekening opgeslagen
-                                </span>
-                            @endif
-                        </div>
-                    </div>
+                    <x-koylu.signature-pad
+                        pad-id="signature-pad-receiver"
+                        property="signature"
+                        label="Handtekening ontvanger"
+                        :has-signature="filled($signature)"
+                    />
+
+                    <x-koylu.signature-pad
+                        pad-id="signature-pad-driver"
+                        property="driverSignature"
+                        label="Handtekening bezorger"
+                        :has-signature="filled($driverSignature)"
+                    />
                 @endif
             </div>
         </x-koylu.card>
@@ -323,24 +365,26 @@
     @push('scripts')
         <script>
             (() => {
-                let pad = null;
+                /** Per canvas-id één tekenvak; elk vak schrijft naar zijn eigen Livewire-property. */
+                const pads = new Map();
 
-                function createPad() {
-                    const canvas = document.getElementById('signature-pad');
-                    if (!canvas) {
-                        pad?.unbind?.();
-                        pad = null;
+                function createPad(canvas) {
+                    if (!canvas || !canvas.isConnected) {
                         return null;
                     }
 
-                    if (pad?.canvas === canvas) {
-                        return pad;
+                    const padId = canvas.id;
+                    const existing = pads.get(padId);
+
+                    if (existing?.canvas === canvas) {
+                        return existing;
                     }
 
-                    pad?.unbind?.();
+                    existing?.unbind?.();
 
-                    pad = {
+                    const pad = {
                         canvas,
+                        property: canvas.dataset.property,
                         ctx: canvas.getContext('2d'),
                         drawing: false,
                         hasInk: false,
@@ -416,13 +460,13 @@
                             }
                         },
                         save() {
-                            @this.set('signature', this.canvas.toDataURL('image/png'));
+                            @this.set(this.property, this.canvas.toDataURL('image/png'));
                         },
                         clear() {
                             const rect = this.canvas.getBoundingClientRect();
                             this.ctx.clearRect(0, 0, rect.width, rect.height);
                             this.hasInk = false;
-                            @this.set('signature', '');
+                            @this.set(this.property, '');
                         },
                         bind() {
                             this.unbind();
@@ -462,22 +506,37 @@
 
                     pad.resize();
                     pad.bind();
+                    pads.set(padId, pad);
 
                     return pad;
                 }
 
-                window.clearSignature = () => {
-                    if (pad?.canvas?.isConnected) {
-                        pad.clear();
-                        return;
-                    }
+                function allPads() {
+                    return document.querySelectorAll('[data-signature-pad]');
+                }
 
-                    createPad()?.clear();
+                window.clearSignature = (padId = null) => {
+                    allPads().forEach((canvas) => {
+                        if (padId && canvas.id !== padId) {
+                            return;
+                        }
+
+                        createPad(canvas)?.clear();
+                    });
                 };
 
                 function boot() {
                     requestAnimationFrame(() => {
-                        requestAnimationFrame(() => createPad());
+                        requestAnimationFrame(() => {
+                            pads.forEach((pad, padId) => {
+                                if (!pad.canvas?.isConnected) {
+                                    pad.unbind?.();
+                                    pads.delete(padId);
+                                }
+                            });
+
+                            allPads().forEach((canvas) => createPad(canvas));
+                        });
                     });
                 }
 

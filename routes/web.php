@@ -12,6 +12,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/leverbon/{delivery}', [DeliveryPdfController::class, 'download'])
         ->name('leverbon.download');
+    Route::get('/leverbon/werkbon/{order}', [DeliveryPdfController::class, 'concept'])
+        ->name('leverbon.concept');
+    Route::get('/leverbon/route/{route}', [DeliveryPdfController::class, 'routeNotes'])
+        ->name('leverbon.route');
     Route::get('/factuur/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])
         ->name('invoice.pdf');
 

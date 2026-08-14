@@ -21,6 +21,11 @@ class OrderInfolist
                             ->weight('bold')
                             ->copyable(),
 
+                        TextEntry::make('delivery_note_number')
+                            ->label('Leverbonnummer')
+                            ->copyable()
+                            ->placeholder('Nog niet ingepland'),
+
                         TextEntry::make('customer.company_name')
                             ->label('Klant')
                             ->placeholder('-'),

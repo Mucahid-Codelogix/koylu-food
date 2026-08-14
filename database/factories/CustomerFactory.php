@@ -21,7 +21,8 @@ class CustomerFactory extends Factory
             'company_name' => $this->faker->company,
             'contact_name' => $this->faker->name,
             'email' => $this->faker->companyEmail,
-            'phone' => $this->faker->phoneNumber,
+            /** Nederlands nummer: faker's internationale notatie haalt de tel()-validatie niet altijd. */
+            'phone' => $this->faker->numerify('06########'),
             'address' => $this->faker->streetAddress,
             'postal_code' => $this->faker->postcode,
             'city' => $this->faker->city,

@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i '' 's/^use function Pest\\\\\\\\Livewire\\\\\\\\livewire;$/use Livewire\\\\\\\\Livewire;/' tests/Feature/RouteStopsRelationManagerTest.php)",
+      "Bash(sed -i '' 's/    livewire\\(RouteStopsRelationManager::class, \\\\[/    Livewire::test\\(RouteStopsRelationManager::class, [/' tests/Feature/RouteStopsRelationManagerTest.php)",
+      "Bash(grep -n 'p\\\\['\\\\''total'\\\\''\\\\] }} {{ $p\\\\['\\\\''unit'\\\\''\\\\]' resources/views/filament/driver/pages/driver-loading-phase.blade.php)",
+      "Bash(grep -n '$p\\\\['\\\\''unit'\\\\''\\\\]' resources/views/filament/driver/pages/driver-loading-phase.blade.php)",
+      "Bash(perl -0pi -e 's/:is-corrected=\"\\\\$row\\\\['\\\\''is_quantity_corrected'\\\\''\\\\] \\\\?\\\\? false\"/:is-corrected=\"\\\\$this->isQuantityCorrected\\(\\\\$row['\\\\''order_item_id'\\\\''], \\\\$row['\\\\''quantity'\\\\'']\\)\"/g' resources/views/filament/driver/pages/driver-loading-phase.blade.php)",
+      "Bash(sed -i '' 's/^use Illuminate\\\\\\\\Database\\\\\\\\Migrations\\\\\\\\Migration;$/use Carbon\\\\\\\\Carbon;\\\\nuse Illuminate\\\\\\\\Database\\\\\\\\Migrations\\\\\\\\Migration;/' database/migrations/2026_08_13_121443_add_delivery_note_number_to_orders_table.php)",
+      "Bash(sed -i '' 's/^use Illuminate\\\\\\\\Support\\\\\\\\Facades\\\\\\\\Schema;$/use Illuminate\\\\\\\\Support\\\\\\\\Facades\\\\\\\\DB;\\\\nuse Illuminate\\\\\\\\Support\\\\\\\\Facades\\\\\\\\Schema;/' database/migrations/2026_08_13_121443_add_delivery_note_number_to_orders_table.php)",
+      "Bash(sed -i '' 's/^use App\\\\\\\\Models\\\\\\\\Order;$/use App\\\\\\\\Models\\\\\\\\Order;\\\\nuse App\\\\\\\\Models\\\\\\\\Route;/' app/Http/Controllers/DeliveryPdfController.php)",
+      "Bash(sed -i '' 's|    Route::get\\(./leverbon/werkbon/{order}., \\\\[DeliveryPdfController::class, .concept.\\\\]\\)\\\\n|&|' routes/web.php)",
+      "Bash(pdftoppm -png -r 70 -f 1 -l 1 werkbonnen.pdf werkbon)",
+      "Bash(pdftoppm -png -r 70 -f 1 -l 1 /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/werkbonnen.pdf /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/werkbon)",
+      "Bash(pdftoppm -png -r 70 -f 1 -l 1 /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/definitief.pdf /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/definitief)",
+      "Bash(sed -i '' 's/^use App\\\\\\\\Services\\\\\\\\ProductPricingService;$/use App\\\\\\\\Services\\\\\\\\AppSettings;\\\\nuse App\\\\\\\\Services\\\\\\\\ProductPricingService;/' app/Models/Customer.php)",
+      "Bash(sed -i '' \"s/            'is_vat_exempt' => 'boolean',/            'is_vat_exempt' => 'boolean',\\\\n            'crate_deposit_price' => 'decimal:2',/\" app/Models/Customer.php)",
+      "Bash(sed -i '' 's/^use App\\\\\\\\Enums\\\\\\\\DeliveryStatus;$/use App\\\\\\\\Enums\\\\\\\\DeliveryStatus;\\\\nuse App\\\\\\\\Filament\\\\\\\\Pages\\\\\\\\Settings as SettingsPage;/' tests/Feature/CrateDepositInvoicingTest.php)",
+      "Bash(sed -i '' 's/^use Illuminate\\\\\\\\Foundation\\\\\\\\Testing\\\\\\\\RefreshDatabase;$/use Illuminate\\\\\\\\Foundation\\\\\\\\Testing\\\\\\\\RefreshDatabase;\\\\nuse Livewire\\\\\\\\Livewire;/' tests/Feature/CrateDepositInvoicingTest.php)",
+      "Bash(pdftoppm -png -r 70 -f 1 -l 1 /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/factuur.pdf /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/factuur)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:brixxs.com)",
+      "Bash(sed -i '' 's/^EXACT_CRATE_DEPOSIT_ARTICLE_CODE=$/EXACT_CRATE_DEPOSIT_ARTICLE_CODE=STATIEGELD-KRAT/' .env.example)",
+      "Bash(sed -i '' 's/^EXACT_CASH_JOURNAL=$/EXACT_CASH_JOURNAL=10/;s/^EXACT_CASH_GL_ACCOUNT=$/EXACT_CASH_GL_ACCOUNT=1000/;s/^EXACT_RECEIVABLES_GL_ACCOUNT=$/EXACT_RECEIVABLES_GL_ACCOUNT=1300/' .env.example)",
+      "Bash(ls tests/Feature/Exact/; echo \"=== PATROON ===\"; sed -n 1,45p tests/Feature/Exact/*Invoice*.php 2>/dev/null | head -50)",
+      "Bash(pdftoppm -png -r 70 -f 1 -l 1 /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/leverbon2.pdf /private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad/leverbon2)",
+      "Bash(awk '/^\\\\[2026-08-13 15:/{p=1} p' storage/logs/laravel.log)",
+      "Bash(sed -i '' 's/^EXACT_CRATE_DEPOSIT_UNIT=st$/EXACT_CRATE_DEPOSIT_UNIT=stuk/' .env .env.example)",
+      "Bash(sed -i '' \"s/'unit' => env\\('EXACT_CRATE_DEPOSIT_UNIT', 'st'\\)/'unit' => env\\('EXACT_CRATE_DEPOSIT_UNIT', 'stuk'\\)/\" config/exact.php)",
+      "Bash(sed -i '' 's/^use App\\\\\\\\Models\\\\\\\\Product;$/use App\\\\\\\\Models\\\\\\\\Product;\\\\nuse Illuminate\\\\\\\\Support\\\\\\\\Facades\\\\\\\\Cache;/' app/Services/Exact/ExactItemSyncService.php)",
+      "Bash(sed -i '' 's/^use App\\\\\\\\Models\\\\\\\\Product;$/use App\\\\\\\\Models\\\\\\\\Product;/' app/Services/Exact/ExactInvoiceSyncService.php)",
+      "Bash(grep -n '@property string $ID\\\\|@property string $Code\\\\|protected $url' vendor/picqer/exact-php-client/src/Picqer/Financials/Exact/GLAccount.php)",
+      "Bash(php /Users/nbouled/Herd/koylu-food-app/artisan tinker --execute ' *)",
+      "Bash(S=/private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad; rm -f $S/token.txt $S/division.txt $S/probe*.php; echo \"token opgeruimd\"; php artisan make:class Services/Exact/ExactXmlClient --no-interaction 2>&1 | tail -1; php artisan make:class Services/Exact/ExactMatchService --no-interaction 2>&1 | tail -1; php artisan make:migration add_exact_match_fields_to_invoices_table --no-interaction 2>&1 | tail -1)",
+      "Bash(grep -n 'exact_\\\\|paid_amount\\\\|protected $casts\\\\|protected function casts\\\\|fillable' app/Models/Invoice.php)",
+      "Bash(./vendor/bin/pest tests/Feature/Exact/ExactXmlClientTest.php)",
+      "Bash(./vendor/bin/pest tests/Feature/Exact/ExactMatchServiceTest.php)",
+      "Bash(./vendor/bin/pest tests/Feature/Exact/CashInvoiceMatchingTest.php)",
+      "Bash(./vendor/bin/pint --dirty)",
+      "Bash(./vendor/bin/pest)",
+      "Bash(:)",
+      "Bash(./vendor/bin/pest tests/Feature/Exact/)"
+    ],
+    "additionalDirectories": [
+      "/Users/nbouled/Herd/koylu-food-app/tests/Feature/Exact",
+      "/private/tmp/claude-501/-Users-nbouled-Herd-koylu-food-app/213480ec-1715-4c3b-8fed-e7b8e624da80/scratchpad"
+    ]
+  }
+}

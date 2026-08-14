@@ -37,8 +37,11 @@
                     </div>
 
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
-                        <dt class="koylu-kpi-label">Token verloopt</dt>
-                        <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $expiresAt ?? '—' }}</dd>
+                        <dt class="koylu-kpi-label">Laatst ververst</dt>
+                        <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $lastRefreshedAt ?? '—' }}</dd>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            De koppeling vernieuwt zichzelf automatisch, elke nacht en bij elk gebruik.
+                        </p>
                     </div>
                 </dl>
             </div>

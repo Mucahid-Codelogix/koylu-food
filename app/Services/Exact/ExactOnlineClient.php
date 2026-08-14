@@ -125,9 +125,15 @@ class ExactOnlineClient
         }
     }
 
+    /**
+     * Exact gebruikt HTTP 500 ook voor inhoudelijke fouten ("Ongeldige
+     * referentie: Eenheid"). Daarop opnieuw proberen helpt niet en maakt een
+     * mislukte boeking alleen maar trager, dus we herhalen alleen bij fouten
+     * die echt tijdelijk zijn.
+     */
     private function shouldRetry(ExactApiException $exception): bool
     {
-        return in_array($exception->statusCode, [429, 500, 502, 503, 504], true);
+        return in_array($exception->statusCode, [429, 502, 503, 504], true);
     }
 
     private function buildConnection(): Connection

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CrateTransaction;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -17,6 +18,10 @@ use Illuminate\Support\Collection;
  */
 class InvoiceLineCalculator
 {
+    public const TYPE_PRODUCT = 'product';
+
+    public const TYPE_CRATE_DEPOSIT = 'crate_deposit';
+
     /**
      * Build the billable invoice lines for an order.
      *
@@ -39,6 +44,107 @@ class InvoiceLineCalculator
      */
     public function lines(Order $order, ?Delivery $delivery): Collection
     {
+        return $this->productLines($order, $delivery)
+            ->concat($this->crateDepositLines($order, $delivery))
+            ->values();
+    }
+
+    /**
+     * Statiegeldregels: het meegegeven aantal kratten wordt in rekening gebracht
+     * en het direct retour ontvangen aantal wordt op dezelfde factuur verrekend.
+     * Statiegeld is btw-vrijgesteld.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function crateDepositLines(Order $order, ?Delivery $delivery): Collection
+    {
+        if ($delivery === null) {
+            return collect();
+        }
+
+        $depositPrice = $order->customer->crateDepositPrice();
+
+        if ($depositPrice <= 0.0) {
+            return collect();
+        }
+
+        $crates = $this->crateTotals($order);
+        $lines = collect();
+
+        if ($crates['given'] > 0) {
+            $lines->push($this->crateLine(
+                description: 'Statiegeld kratten',
+                crates: $crates['given'],
+                depositPrice: $depositPrice,
+            ));
+        }
+
+        if ($crates['returned'] > 0) {
+            $lines->push($this->crateLine(
+                description: 'Statiegeld kratten retour',
+                crates: -$crates['returned'],
+                depositPrice: $depositPrice,
+            ));
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function crateLine(string $description, int $crates, float $depositPrice): array
+    {
+        $lineSubtotal = round($crates * $depositPrice, 2);
+
+        return [
+            'order_item_id' => null,
+            'type' => self::TYPE_CRATE_DEPOSIT,
+            'article_code' => (string) config('exact.crate_deposit.article_code', ''),
+            'product_name' => $description,
+            'unit' => 'krat',
+            'ordered_quantity' => (float) $crates,
+            'delivered_quantity' => (float) $crates,
+            'box_weight_kg' => 0.0,
+            'delivered_kg' => 0.0,
+            'price_per_kg' => 0.0,
+            'unit_price' => $depositPrice,
+            'billing_quantity' => (float) $crates,
+            'billing_unit_price' => $depositPrice,
+            'billing_unit_code' => (string) config('exact.crate_deposit.unit', 'st'),
+            'line_subtotal' => $lineSubtotal,
+            'vat_rate' => 0.0,
+            'line_vat' => 0.0,
+            'missed_reason' => null,
+            'is_missed' => false,
+        ];
+    }
+
+    /**
+     * @return array{given: int, returned: int}
+     */
+    private function crateTotals(Order $order): array
+    {
+        $order->loadMissing('routeStops');
+        $routeId = $order->routeStops->first()?->route_id;
+
+        $transaction = CrateTransaction::query()
+            ->where('customer_id', $order->customer_id)
+            ->when($routeId !== null, fn ($query) => $query->where('route_id', $routeId))
+            ->latest()
+            ->first();
+
+        return [
+            'given' => (int) ($transaction->crates_given ?? 0),
+            'returned' => (int) ($transaction->crates_returned ?? 0),
+        ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function productLines(Order $order, ?Delivery $delivery): Collection
+    {
         return $order->items->map(function (OrderItem $item) use ($order, $delivery): array {
             $deliveryItem = $delivery?->items->firstWhere('order_item_id', $item->id);
             $deliveredQuantity = (float) ($deliveryItem?->delivered_quantity ?? 0);
@@ -51,6 +157,7 @@ class InvoiceLineCalculator
 
             return [
                 'order_item_id' => $item->id,
+                'type' => self::TYPE_PRODUCT,
                 'article_code' => $item->product?->exact_article_code ?? '',
                 'product_name' => $item->product_name,
                 'unit' => $item->unit,
@@ -60,6 +167,9 @@ class InvoiceLineCalculator
                 'delivered_kg' => $deliveredKg,
                 'price_per_kg' => $pricePerKg,
                 'unit_price' => (float) $item->unit_price,
+                'billing_quantity' => $deliveredKg,
+                'billing_unit_price' => $pricePerKg,
+                'billing_unit_code' => (string) config('exact.item.unit', 'kg'),
                 'line_subtotal' => $lineSubtotal,
                 'vat_rate' => $vatRate,
                 'line_vat' => round($lineSubtotal * $vatRate / 100, 2),

@@ -10,6 +10,8 @@ use Illuminate\Support\Collection;
 
 class ExactInvoiceMapper
 {
+    private const TYPE_PRODUCT_FALLBACK = InvoiceLineCalculator::TYPE_PRODUCT;
+
     /**
      * @return array{
      *     OrderedBy: string,
@@ -23,8 +25,11 @@ class ExactInvoiceMapper
      *     SalesInvoiceLines: array<int, array<string, mixed>>,
      * }
      */
-    public static function toExactSalesInvoice(Invoice $invoice, array $itemIdsByProductId): array
-    {
+    public static function toExactSalesInvoice(
+        Invoice $invoice,
+        array $itemIdsByProductId,
+        ?string $crateDepositItemId = null,
+    ): array {
         $invoice->loadMissing([
             'order.customer',
             'order.items.product',
@@ -36,8 +41,12 @@ class ExactInvoiceMapper
         $lines = app(InvoiceLineCalculator::class)->lines($order, $order->delivery);
 
         $salesLines = $lines
-            ->filter(fn (array $line): bool => $line['delivered_kg'] > 0 && $line['line_subtotal'] != 0.0)
-            ->map(function (array $line) use ($order, $itemIdsByProductId): array {
+            ->filter(fn (array $line): bool => self::isBillableLine($line))
+            ->map(function (array $line) use ($order, $itemIdsByProductId, $crateDepositItemId): array {
+                if (($line['type'] ?? InvoiceLineCalculator::TYPE_PRODUCT) === InvoiceLineCalculator::TYPE_CRATE_DEPOSIT) {
+                    return self::crateDepositLine($line, $crateDepositItemId);
+                }
+
                 /** @var OrderItem $orderItem */
                 $orderItem = $order->items->firstWhere('id', $line['order_item_id']);
                 $product = $orderItem?->product;
@@ -64,7 +73,7 @@ class ExactInvoiceMapper
                     'UnitCode' => (string) config('exact.item.unit', 'kg'),
                 ];
 
-                if ($vatCode = self::vatCodeForRate($line['vat_rate'])) {
+                if (filled($vatCode = self::vatCodeForRate($line['vat_rate']))) {
                     $payload['VATCode'] = $vatCode;
                 }
 
@@ -91,6 +100,49 @@ class ExactInvoiceMapper
     }
 
     /**
+     * Productregels tellen alleen mee als er kilo's geleverd zijn; statiegeld
+     * heeft geen gewicht en telt mee zodra er een bedrag op staat.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    private static function isBillableLine(array $line): bool
+    {
+        if (($line['type'] ?? self::TYPE_PRODUCT_FALLBACK) === InvoiceLineCalculator::TYPE_CRATE_DEPOSIT) {
+            return $line['line_subtotal'] != 0.0;
+        }
+
+        return $line['delivered_kg'] > 0 && $line['line_subtotal'] != 0.0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private static function crateDepositLine(array $line, ?string $crateDepositItemId): array
+    {
+        if (! filled($crateDepositItemId)) {
+            throw new ExactApiException(
+                'Er is geen Exact-artikel voor statiegeld kratten ingesteld (EXACT_CRATE_DEPOSIT_ARTICLE_CODE).',
+            );
+        }
+
+        $payload = [
+            'Item' => $crateDepositItemId,
+            'ItemCode' => $line['article_code'],
+            'Description' => $line['product_name'],
+            'Quantity' => $line['billing_quantity'],
+            'UnitPrice' => $line['billing_unit_price'],
+            'UnitCode' => $line['billing_unit_code'],
+        ];
+
+        if (filled($vatCode = config('exact.crate_deposit.vat_code'))) {
+            $payload['VATCode'] = (string) $vatCode;
+        }
+
+        return $payload;
+    }
+
+    /**
      * @param  array{product_name: string, unit: string, delivered_kg: float}  $line
      */
     public static function lineDescription(array $line): string
@@ -103,11 +155,19 @@ class ExactInvoiceMapper
         );
     }
 
+    /**
+     * De btw-tarieven staan als sleutel met een punt in de config ('21.00').
+     * `config()` splitst op punten, dus die sleutel moet uit de array zelf
+     * komen — anders wordt er nooit een btw-code meegestuurd naar Exact.
+     */
     public static function vatCodeForRate(float $vatRate): ?string
     {
         $rateKey = number_format($vatRate, 2, '.', '');
 
-        return config("exact.invoice.vat_codes.{$rateKey}");
+        /** @var array<string, string|null> $vatCodes */
+        $vatCodes = config('exact.invoice.vat_codes', []);
+
+        return $vatCodes[$rateKey] ?? null;
     }
 
     /**

@@ -30,6 +30,7 @@ class DriverDashboard extends Page
             'routeStops' => fn ($q) => $q->orderBy('stop_order'),
             'routeStops.order.customer',
             'routeStops.order.items.product',
+            'routeStops.order.delivery',
             'vehicle',
         ])
             ->where('driver_id', auth()->id())

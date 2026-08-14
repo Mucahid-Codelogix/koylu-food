@@ -36,6 +36,7 @@ class InvoiceActionGroup
         $actions[] = RecalculateInvoiceAction::make();
         $actions[] = ApproveInvoiceAction::make($afterApprove);
         $actions[] = RetryExactInvoiceAction::make();
+        $actions[] = MatchExactPaymentAction::make();
         $actions[] = Action::make('download_ubl')
             ->label('UBL downloaden')
             ->icon('heroicon-o-code-bracket')

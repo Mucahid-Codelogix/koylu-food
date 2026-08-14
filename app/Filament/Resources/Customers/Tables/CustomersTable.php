@@ -20,6 +20,7 @@ class CustomersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('company_name')
                     ->label('Bedrijf')

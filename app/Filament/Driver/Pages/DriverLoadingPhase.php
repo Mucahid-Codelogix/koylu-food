@@ -68,6 +68,7 @@ class DriverLoadingPhase extends Page
                     'actual_weight_kg' => $item->loaded_actual_weight_kg !== null
                         ? (string) $item->loaded_actual_weight_kg
                         : '',
+                    'loaded_quantity' => (string) (float) ($item->loaded_packaging_quantity ?? $item->quantity),
                 ];
             }
         }
@@ -100,13 +101,16 @@ class DriverLoadingPhase extends Page
                     ];
                 }
 
-                $boxQty = (float) $item->quantity;
+                $orderedQty = (float) $item->quantity;
+                $boxQty = (float) ($item->loaded_packaging_quantity ?? $item->quantity);
                 $products[$productId]['customers'][] = [
                     'order_item_id' => $item->id,
                     'stop_order' => $stop->stop_order,
                     'customer_name' => $stop->order->customer->company_name,
                     'city' => $stop->order->customer->city,
-                    'quantity' => $boxQty,
+                    'quantity' => $orderedQty,
+                    'loaded_quantity' => $boxQty,
+                    'is_quantity_corrected' => abs($boxQty - $orderedQty) > 0.001,
                     'unit' => $item->unit,
                     'supplier_name' => $item->supplier_name,
                     'is_whole_chicken' => $item->isWholeChicken(),
@@ -125,8 +129,11 @@ class DriverLoadingPhase extends Page
                 $products[$productId]['total'] += $boxQty;
 
                 if ($item->isWholeChicken()) {
-                    $products[$productId]['total_kg'] += (float) $item->ordered_total_weight_kg;
-                    $products[$productId]['total_pieces'] += (float) $item->ordered_pieces;
+                    $effectiveKg = (float) ($item->loaded_total_weight_kg ?? $item->ordered_total_weight_kg);
+                    $effectivePieces = (float) ($item->loaded_pieces ?? $item->ordered_pieces);
+
+                    $products[$productId]['total_kg'] += $effectiveKg;
+                    $products[$productId]['total_pieces'] += $effectivePieces;
 
                     $variantKey = $item->product_gram_variant_id ?? 0;
 
@@ -142,8 +149,8 @@ class DriverLoadingPhase extends Page
                     }
 
                     $products[$productId]['variant_breakdown'][$variantKey]['boxes'] += $boxQty;
-                    $products[$productId]['variant_breakdown'][$variantKey]['pieces'] += (float) $item->ordered_pieces;
-                    $products[$productId]['variant_breakdown'][$variantKey]['kg'] += (float) $item->ordered_total_weight_kg;
+                    $products[$productId]['variant_breakdown'][$variantKey]['pieces'] += $effectivePieces;
+                    $products[$productId]['variant_breakdown'][$variantKey]['kg'] += $effectiveKg;
 
                     if (filled($item->supplier_name)) {
                         $products[$productId]['variant_breakdown'][$variantKey]['supplier_breakdown'][$item->supplier_name] =
@@ -233,6 +240,21 @@ class DriverLoadingPhase extends Page
         return count($this->products);
     }
 
+    /**
+     * Wijkt het ingevoerde laadaantal af van wat besteld is? Wordt live in de
+     * laadkaart gebruikt, dus vóórdat de correctie is opgeslagen.
+     */
+    public function isQuantityCorrected(int $orderItemId, float|int|string $orderedQuantity): bool
+    {
+        $raw = $this->loadingData[$orderItemId]['loaded_quantity'] ?? null;
+
+        if ($raw === null || trim((string) $raw) === '') {
+            return false;
+        }
+
+        return abs((float) str_replace(',', '.', (string) $raw) - (float) $orderedQuantity) > 0.001;
+    }
+
     public function formatBoxes(float|int|string $boxes): string
     {
         return rtrim(rtrim(number_format((float) $boxes, 2, ',', ''), '0'), ',');
@@ -245,10 +267,46 @@ class DriverLoadingPhase extends Page
 
         foreach ($product['customers'] ?? [] as $row) {
             $itemId = $row['order_item_id'];
-            $raw = $this->loadingData[$itemId]['actual_weight_kg'] ?? '';
-            $value = $raw !== '' ? (float) str_replace(',', '.', $raw) : null;
-            $loadingService->recordActualWeight(OrderItem::findOrFail($itemId), $value);
+            $orderItem = OrderItem::query()
+                ->with(['productGramVariant', 'loadedGramVariant'])
+                ->findOrFail($itemId);
+
+            $loadingService->recordActualWeight(
+                $orderItem,
+                $this->decimalInput($this->loadingData[$itemId]['actual_weight_kg'] ?? ''),
+            );
+
+            $loadingService->recordLoadedQuantity(
+                $orderItem,
+                $this->decimalInput($this->loadingData[$itemId]['loaded_quantity'] ?? ''),
+            );
         }
+
+        $this->refreshRouteData();
+    }
+
+    private function decimalInput(mixed $value): ?float
+    {
+        $raw = trim((string) $value);
+
+        return $raw !== '' ? (float) str_replace(',', '.', $raw) : null;
+    }
+
+    /**
+     * Herlaad de orderregels zodat gecorrigeerde aantallen direct in de totalen
+     * van de laadkaart terugkomen.
+     */
+    private function refreshRouteData(): void
+    {
+        $this->route->load([
+            'routeStops' => fn ($q) => $q->orderBy('stop_order'),
+            'routeStops.order.customer',
+            'routeStops.order.items.product.activeGramVariants',
+            'routeStops.order.items.productGramVariant',
+            'routeStops.order.items.loadedGramVariant',
+        ]);
+
+        $this->products = $this->groupByProduct();
     }
 
     public function nextProduct(): void

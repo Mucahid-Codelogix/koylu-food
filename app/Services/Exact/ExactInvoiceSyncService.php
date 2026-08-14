@@ -38,6 +38,7 @@ class ExactInvoiceSyncService
             $payload = ExactInvoiceMapper::toExactSalesInvoice(
                 $invoice,
                 $itemIdsByProductId,
+                $this->crateDepositItemId($order),
             );
 
             $salesInvoice = new SalesInvoice($connection);
@@ -94,6 +95,23 @@ class ExactInvoiceSyncService
     }
 
     /**
+     * Statiegeld is geen product uit onze catalogus, maar een vast artikel in
+     * Exact. We zoeken het ID op bij de ingestelde artikelcode.
+     */
+    private function crateDepositItemId($order): ?string
+    {
+        $hasCrateDeposit = app(InvoiceLineCalculator::class)
+            ->crateDepositLines($order, $order->delivery)
+            ->isNotEmpty();
+
+        if (! $hasCrateDeposit) {
+            return null;
+        }
+
+        return $this->itemSyncService->ensureCrateDepositItem();
+    }
+
+    /**
      * @return array<int, string>
      */
     private function ensureProductsAreSynced($order): array
@@ -116,23 +134,37 @@ class ExactInvoiceSyncService
                 continue;
             }
 
+            /**
+             * Een product dat sinds de laatste sync niet gewijzigd is, hoeft niet
+             * opnieuw naar Exact: dat scheelt twee API-calls per product en maakt
+             * het boeken van een factuur merkbaar sneller.
+             */
+            if ($this->isSyncedWithExact($product)) {
+                $itemIdsByProductId[$product->id] = (string) $product->exact_item_id;
+
+                continue;
+            }
+
             $itemId = $this->itemSyncService->sync($product);
 
             $product->updateQuietly([
+                'exact_item_id' => $itemId,
+                'exact_article_code' => $product->exact_article_code ?: ExactItemMapper::articleCode($product),
                 'exact_synced_at' => now(),
                 'exact_sync_error' => null,
             ]);
-
-            if (blank($product->exact_article_code)) {
-                $product->updateQuietly([
-                    'exact_article_code' => ExactItemMapper::articleCode($product),
-                ]);
-            }
 
             $itemIdsByProductId[$product->id] = $itemId;
         }
 
         return $itemIdsByProductId;
+    }
+
+    private function isSyncedWithExact(Product $product): bool
+    {
+        return filled($product->exact_item_id)
+            && $product->exact_synced_at !== null
+            && $product->exact_synced_at->gte($product->updated_at);
     }
 
     private function printInvoice(Connection $connection, string $invoiceId): void

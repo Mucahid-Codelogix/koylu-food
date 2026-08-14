@@ -3,12 +3,14 @@
 namespace App\Observers;
 
 use App\Models\RouteStop;
+use App\Services\DeliveryNoteService;
 use App\Services\OrderWorkflowService;
 
 class RouteStopObserver
 {
     public function __construct(
         protected OrderWorkflowService $orders,
+        protected DeliveryNoteService $deliveryNotes,
     ) {}
 
     public function creating(RouteStop $routeStop): void
@@ -26,6 +28,7 @@ class RouteStopObserver
 
         if ($order !== null) {
             $this->orders->markAsRouted($order);
+            $this->deliveryNotes->assignNumber($order);
         }
     }
 

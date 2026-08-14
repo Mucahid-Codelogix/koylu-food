@@ -32,8 +32,8 @@
             @if ($exactConnected)
                 <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                     Admin {{ $exact['division'] ?? '—' }}
-                    @if ($exact['expires_at'])
-                        · token t/m {{ $exact['expires_at'] }}
+                    @if ($exact['last_refreshed_at'])
+                        · laatst ververst {{ $exact['last_refreshed_at'] }}
                     @endif
                 </p>
             @else

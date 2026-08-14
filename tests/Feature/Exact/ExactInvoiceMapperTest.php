@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\CrateTransaction;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Route;
+use App\Models\RouteStop;
+use App\Services\Exact\ExactApiException;
 use App\Services\Exact\ExactInvoiceMapper;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,8 +16,10 @@ it('maps billable invoice lines to exact sales invoice lines in kg', function ()
     config([
         'exact.invoice.journal' => '70',
         'exact.item.unit' => 'kg',
-        'exact.invoice.vat_codes.21.00' => 'VH',
-        'exact.invoice.vat_codes.9.00' => 'VL',
+        'exact.invoice.vat_codes' => [
+            '21.00' => 'VH',
+            '9.00' => 'VL',
+        ],
     ]);
 
     $customer = Customer::factory()->create([
@@ -61,7 +67,7 @@ it('maps billable invoice lines to exact sales invoice lines in kg', function ()
 });
 
 it('maps vat exempt lines to the configured zero vat code', function () {
-    config(['exact.invoice.vat_codes.0.00' => 'V0']);
+    config(['exact.invoice.vat_codes' => ['0.00' => 'V0']]);
 
     $customer = Customer::factory()->create([
         'exact_account_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
@@ -107,4 +113,121 @@ it('falls back to the internal invoice number when exact number is missing', fun
     ]);
 
     expect($invoice->displayInvoiceNumber())->toBe('F2026-0001');
+});
+
+it('maps crate deposit lines to the configured exact article', function () {
+    config([
+        'exact.crate_deposit.article_code' => 'STATIEGELD-KRAT',
+        'exact.crate_deposit.unit' => 'st',
+        'exact.crate_deposit.vat_code' => '0',
+    ]);
+
+    $customer = Customer::factory()->create([
+        'exact_account_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        'crate_deposit_price' => 0.25,
+    ]);
+
+    ['order' => $order, 'delivery' => $delivery] = makeInvoiceOrder([
+        ['delivered' => 1, 'box_weight_kg' => 5, 'price_per_kg' => 10, 'vat_rate' => 21],
+    ]);
+
+    $order->update(['customer_id' => $customer->id]);
+    $order->load(['items.product', 'customer']);
+
+    $item = $order->items->first();
+    $item->product->update(['exact_article_code' => 'ART-1']);
+
+    $route = Route::factory()->create();
+    RouteStop::factory()->create([
+        'route_id' => $route->id,
+        'order_id' => $order->id,
+        'stop_order' => 1,
+    ]);
+
+    CrateTransaction::create([
+        'customer_id' => $customer->id,
+        'route_id' => $route->id,
+        'crates_given' => 10,
+        'crates_returned' => 4,
+    ]);
+
+    $invoice = app(InvoiceService::class)->createFromDelivery($delivery->fresh('items'));
+
+    $payload = ExactInvoiceMapper::toExactSalesInvoice(
+        $invoice->fresh(['order.customer', 'order.items.product', 'order.delivery.items']),
+        [$item->product_id => 'item-1'],
+        crateDepositItemId: 'crate-item-id',
+    );
+
+    $crateLines = collect($payload['SalesInvoiceLines'])
+        ->where('ItemCode', 'STATIEGELD-KRAT')
+        ->values();
+
+    expect($crateLines)->toHaveCount(2)
+        ->and($crateLines[0])->toMatchArray([
+            'Item' => 'crate-item-id',
+            'Description' => 'Statiegeld kratten',
+            'Quantity' => 10.0,
+            'UnitPrice' => 0.25,
+            'UnitCode' => 'st',
+            'VATCode' => '0',
+        ])
+        ->and($crateLines[1])->toMatchArray([
+            'Description' => 'Statiegeld kratten retour',
+            'Quantity' => -4.0,
+        ]);
+});
+
+it('weigert te boeken als er statiegeld is maar geen exact-artikel', function () {
+    $customer = Customer::factory()->create([
+        'exact_account_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        'crate_deposit_price' => 0.25,
+    ]);
+
+    ['order' => $order, 'delivery' => $delivery] = makeInvoiceOrder([
+        ['delivered' => 1, 'box_weight_kg' => 5, 'price_per_kg' => 10, 'vat_rate' => 21],
+    ]);
+
+    $order->update(['customer_id' => $customer->id]);
+    $order->load(['items.product', 'customer']);
+
+    $item = $order->items->first();
+    $item->product->update(['exact_article_code' => 'ART-1']);
+
+    $route = Route::factory()->create();
+    RouteStop::factory()->create([
+        'route_id' => $route->id,
+        'order_id' => $order->id,
+        'stop_order' => 1,
+    ]);
+
+    CrateTransaction::create([
+        'customer_id' => $customer->id,
+        'route_id' => $route->id,
+        'crates_given' => 10,
+        'crates_returned' => 0,
+    ]);
+
+    $invoice = app(InvoiceService::class)->createFromDelivery($delivery->fresh('items'));
+
+    ExactInvoiceMapper::toExactSalesInvoice(
+        $invoice->fresh(['order.customer', 'order.items.product', 'order.delivery.items']),
+        [$item->product_id => 'item-1'],
+        crateDepositItemId: null,
+    );
+})->throws(ExactApiException::class);
+
+it('leest btw-codes met een punt in de sleutel uit de config', function () {
+    config([
+        'exact.invoice.vat_codes' => [
+            '0.00' => '0',
+            '9.00' => '1',
+            '21.00' => '2',
+        ],
+    ]);
+
+    expect(ExactInvoiceMapper::vatCodeForRate(21.0))->toBe('2')
+        ->and(ExactInvoiceMapper::vatCodeForRate(9.0))->toBe('1')
+        ->and(ExactInvoiceMapper::vatCodeForRate(0.0))->toBe('0')
+        ->and(ExactInvoiceMapper::vatCodeForRate(6.0))->toBeNull();
 });

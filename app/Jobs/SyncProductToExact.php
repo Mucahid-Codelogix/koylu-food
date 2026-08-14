@@ -44,10 +44,11 @@ class SyncProductToExact implements ShouldQueue
         }
 
         try {
-            $syncService->sync($this->product);
+            $itemId = $syncService->sync($this->product);
 
             $this->product->updateQuietly([
                 'exact_article_code' => ExactItemMapper::articleCode($this->product),
+                'exact_item_id' => $itemId,
                 'exact_synced_at' => now(),
                 'exact_sync_error' => null,
             ]);

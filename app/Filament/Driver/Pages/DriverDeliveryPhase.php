@@ -7,8 +7,10 @@ use App\Enums\RouteStopStatus;
 use App\Models\CrateTransaction;
 use App\Models\Delivery;
 use App\Models\DeliveryItem;
+use App\Models\OrderItem;
 use App\Models\Route;
 use App\Models\RouteStop;
+use App\Services\CashPaymentService;
 use App\Services\InvoiceService;
 use App\Services\OrderWorkflowService;
 use App\Services\RouteWorkflowService;
@@ -36,17 +38,24 @@ class DriverDeliveryPhase extends Page
 
     public string $signature = '';
 
+    public string $driverSignature = '';
+
     public string $receiverName = '';
 
     public int $cratesGiven = 0;
 
     public int $cratesReturned = 0;
 
+    public bool $paidInCash = false;
+
+    public string $cashAmount = '';
+
     public function mount(): void
     {
         $routeId = request()->query('routeId') ?? request()->route('routeId');
 
         $this->route = Route::with([
+            'driver',
             'routeStops' => fn ($q) => $q->orderBy('stop_order'),
             'routeStops.order.customer',
             'routeStops.order.items.product',
@@ -90,9 +99,12 @@ class DriverDeliveryPhase extends Page
     {
         $stop = $this->getCurrentStop();
         $this->signature = '';
+        $this->driverSignature = '';
         $this->receiverName = '';
         $this->cratesGiven = 0;
         $this->cratesReturned = 0;
+        $this->paidInCash = false;
+        $this->cashAmount = '';
         $this->deliveryData = [];
 
         $this->dispatch('clear-signature');
@@ -105,15 +117,22 @@ class DriverDeliveryPhase extends Page
             $existingItem = $existingDelivery?->items
                 ->firstWhere('order_item_id', $item->id);
 
+            $loadedQuantity = $item->loaded_packaging_quantity !== null
+                ? (float) $item->loaded_packaging_quantity
+                : null;
+
             $this->deliveryData[$item->id] = [
                 'product_name' => $item->product_name,
                 'supplier_name' => $item->supplier_name,
                 'unit' => $item->unit,
                 'ordered_quantity' => $item->quantity,
-                'delivered_quantity' => $existingItem?->delivered_quantity ?? $item->quantity,
+                'loaded_quantity' => $loadedQuantity,
+                'delivered_quantity' => $existingItem?->delivered_quantity
+                    ?? $loadedQuantity
+                    ?? $item->quantity,
                 'is_missed' => $existingItem ? $existingItem->delivered_quantity == 0 : false,
                 'missed_reason' => $existingItem?->missed_reason ?? '',
-                'return_note' => $existingItem?->return_note ?? '',
+                'return_note' => $existingItem?->return_note ?? $this->loadingCorrectionNote($item),
                 'actual_weight_kg' => $item->loaded_actual_weight_kg,
             ];
         }
@@ -133,6 +152,43 @@ class DriverDeliveryPhase extends Page
         }
     }
 
+    /**
+     * Als er tijdens het laden minder (of meer) is meegenomen dan besteld, geven we
+     * de chauffeur een kant-en-klare retour-notitie zodat de afwijking herleidbaar blijft.
+     */
+    private function loadingCorrectionNote(OrderItem $item): string
+    {
+        if ($item->loaded_packaging_quantity === null) {
+            return '';
+        }
+
+        $ordered = (float) $item->quantity;
+        $loaded = (float) $item->loaded_packaging_quantity;
+
+        if (abs($ordered - $loaded) <= 0.001) {
+            return '';
+        }
+
+        return sprintf(
+            'Correctie bij laden: origineel %s, geladen %s (%s)',
+            $this->formatQuantity($ordered),
+            $this->formatQuantity($loaded),
+            $item->unit,
+        );
+    }
+
+    private function formatQuantity(float $quantity): string
+    {
+        return rtrim(rtrim(number_format($quantity, 2, ',', ''), '0'), ',');
+    }
+
+    private function decimalInput(mixed $value): ?float
+    {
+        $raw = trim((string) $value);
+
+        return $raw !== '' ? (float) str_replace(',', '.', $raw) : null;
+    }
+
     public function saveDelivery(): void
     {
         $stop = $this->getCurrentStop();
@@ -146,14 +202,25 @@ class DriverDeliveryPhase extends Page
 
         if (empty($this->signature)) {
             Notification::make()
-                ->title('Handtekening ontbreekt')
+                ->title('Handtekening ontvanger ontbreekt')
                 ->warning()
                 ->send();
 
             return;
         }
 
-        $signaturePath = $this->saveSignature($this->signature, $stop->id);
+        if (empty($this->driverSignature)) {
+            Notification::make()
+                ->title('Handtekening bezorger ontbreekt')
+                ->body('Teken zelf ook voor de aflevering.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $signaturePath = $this->saveSignature($this->signature, $stop->id, 'ontvanger');
+        $driverSignaturePath = $this->saveSignature($this->driverSignature, $stop->id, 'bezorger');
         $deliveryStatus = $this->resolveDeliveryStatus($stop);
 
         $delivery = Delivery::updateOrCreate(
@@ -162,6 +229,8 @@ class DriverDeliveryPhase extends Page
                 'delivered_at' => now(),
                 'receiver_name' => $this->receiverName,
                 'signature_path' => $signaturePath,
+                'driver_signature_path' => $driverSignaturePath,
+                'driver_name' => $this->route->driver?->name,
                 'status' => $deliveryStatus,
             ]
         );
@@ -197,7 +266,15 @@ class DriverDeliveryPhase extends Page
 
         if ($deliveryStatus !== DeliveryStatus::FAILED) {
             app(OrderWorkflowService::class)->markAsDelivered($stop->order);
-            app(InvoiceService::class)->createFromDelivery($delivery->fresh('items'));
+
+            $invoice = app(InvoiceService::class)->createFromDelivery($delivery->fresh('items'));
+
+            if ($this->paidInCash) {
+                app(CashPaymentService::class)->registerCashPayment(
+                    $invoice,
+                    $this->decimalInput($this->cashAmount),
+                );
+            }
         }
 
         Notification::make()
@@ -415,11 +492,11 @@ class DriverDeliveryPhase extends Page
         return filled($note) ? $note : null;
     }
 
-    private function saveSignature(string $base64, int $stopId): string
+    private function saveSignature(string $base64, int $stopId, string $role): string
     {
         $data = explode(',', $base64);
         $image = base64_decode($data[1] ?? $data[0]);
-        $path = UploadStorage::directory('signatures')."/stop_{$stopId}_".time().'.png';
+        $path = UploadStorage::directory('signatures')."/stop_{$stopId}_{$role}_".time().'.png';
         UploadStorage::disk()->put($path, $image);
 
         return $path;
