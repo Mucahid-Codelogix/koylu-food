@@ -135,14 +135,18 @@ class DeliveryNoteService
     /**
      * DomPDF haalt geen externe bestanden op, dus de handtekening gaat als
      * data-URI mee. Werkt daarmee ook als uploads op Spaces staan.
+     *
+     * Is de handtekening niet te lezen — bestand weg of opslag onbereikbaar —
+     * dan komt de leverbon eruit zonder handtekening in plaats van dat de
+     * download stukloopt.
      */
     private function signatureDataUri(?string $path): ?string
     {
-        if (blank($path) || ! UploadStorage::disk()->exists($path)) {
-            return null;
-        }
+        $contents = UploadStorage::read($path);
 
-        return 'data:image/png;base64,'.base64_encode(UploadStorage::disk()->get($path));
+        return $contents === null
+            ? null
+            : 'data:image/png;base64,'.base64_encode($contents);
     }
 
     private function formatQuantity(float $quantity): float

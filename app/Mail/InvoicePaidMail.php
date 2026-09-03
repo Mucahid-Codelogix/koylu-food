@@ -38,13 +38,13 @@ class InvoicePaidMail extends Mailable
      */
     public function attachments(): array
     {
-        if (blank($this->invoice->pdf_path) || ! UploadStorage::disk()->exists($this->invoice->pdf_path)) {
+        if (! UploadStorage::exists($this->invoice->pdf_path)) {
             return [];
         }
 
         return [
             Attachment::fromData(
-                fn (): string => UploadStorage::disk()->get($this->invoice->pdf_path),
+                fn (): string => (string) UploadStorage::read($this->invoice->pdf_path),
                 'factuur-'.$this->invoice->displayInvoiceNumber().'.pdf',
             )->withMime('application/pdf'),
         ];

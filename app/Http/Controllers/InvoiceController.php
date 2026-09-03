@@ -11,7 +11,7 @@ class InvoiceController extends Controller
     {
         $this->authorizeAccess($invoice);
 
-        abort_unless($invoice->pdf_path && UploadStorage::disk()->exists($invoice->pdf_path), 404);
+        abort_unless(UploadStorage::exists($invoice->pdf_path), 404);
 
         return UploadStorage::disk()->download(
             $invoice->pdf_path,
@@ -23,7 +23,7 @@ class InvoiceController extends Controller
     {
         $this->authorizeAccess($invoice);
 
-        abort_unless($invoice->ubl_path && UploadStorage::disk()->exists($invoice->ubl_path), 404);
+        abort_unless(UploadStorage::exists($invoice->ubl_path), 404);
 
         return UploadStorage::disk()->download(
             $invoice->ubl_path,
