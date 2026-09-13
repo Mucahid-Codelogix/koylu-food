@@ -24,7 +24,7 @@ use Illuminate\Database\Seeder;
  * Doel: de chauffeur-laadweergave doortesten met (1) hele kip in meerdere
  * gramvarianten en (2) producten van verschillende leveranciers.
  *
- * Idempotent: verwijdert eerst eigen eerdere testdata (order_number KIPTEST-*).
+ * Idempotent: verwijdert eerst eigen eerdere, nog niet geleverde testdata (order_number KIPTEST-*).
  * Raakt geen bestaande product-/klantdata aan.
  *
  * Draaien:  php artisan db:seed --class=DriverKipTestRouteSeeder
@@ -151,8 +151,11 @@ class DriverKipTestRouteSeeder extends Seeder
 
     private function cleanupPreviousTestData(): void
     {
+        // Geleverde testorders blijven staan: leveringen (en hun facturen) mogen
+        // niet verwijderd worden, dus die ruimen we bewust niet op.
         $orderIds = Order::query()
             ->where('order_number', 'like', self::ORDER_PREFIX.'-%')
+            ->whereDoesntHave('delivery')
             ->pluck('id');
 
         if ($orderIds->isEmpty()) {
