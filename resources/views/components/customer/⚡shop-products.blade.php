@@ -135,7 +135,8 @@ new class extends Component
             $cartKey = $this->cartKey($product->id, $productSupplier->id, $gramVariant->id);
 
             if (isset($this->cart[$cartKey])) {
-                $this->cart[$cartKey]['quantity'] += $qty;
+                // De kaart toont al het wagen-aantal; "Bijwerken" zet dat aantal, telt niet op.
+                $this->cart[$cartKey]['quantity'] = $qty;
                 $this->refreshWholeChickenCartLine($this->cart[$cartKey], $gramVariant, $productSupplier);
             } else {
                 $this->cart[$cartKey] = $this->makeWholeChickenCartLine($product, $gramVariant, $productSupplier, $preview, $qty, $cartKey);
@@ -157,7 +158,7 @@ new class extends Component
             $cartKey = $this->cartKey($product->id, $productSupplier->id, null, $packaging->id);
 
             if (isset($this->cart[$cartKey])) {
-                $this->cart[$cartKey]['quantity'] += $qty;
+                $this->cart[$cartKey]['quantity'] = $qty;
                 $this->cart[$cartKey]['subtotal'] = $this->pricing()->lineSubtotal(
                     $this->customer(),
                     $productSupplier,

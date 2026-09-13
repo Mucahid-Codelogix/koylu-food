@@ -133,3 +133,21 @@ it('increments product quantity before adding to cart', function () {
         ->call('incrementProductQuantity', $product->id)
         ->assertSet('quantities.'.$product->id, 2);
 });
+
+it('sets the cart quantity instead of adding it again when updating an existing line', function () {
+    $customer = Customer::factory()->create();
+    $user = User::factory()->create(['customer_id' => $customer->id]);
+    $product = createShopProduct(weightKg: 10, pricePerKg: 9.8);
+
+    $component = Livewire::actingAs($user)
+        ->test('customer.shop-products')
+        ->call('addToCart', $product->id)
+        ->call('incrementProductQuantity', $product->id)
+        ->call('addToCart', $product->id);
+
+    $line = collect($component->get('cart'))->first();
+
+    expect($component->get('cart'))->toHaveCount(1)
+        ->and((float) $line['quantity'])->toBe(2.0)
+        ->and((float) $component->get('total'))->toBe(196.0);
+});

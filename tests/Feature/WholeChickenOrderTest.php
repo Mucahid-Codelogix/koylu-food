@@ -169,3 +169,21 @@ it('persists whole chicken snapshots when placing an order', function () {
         ->and($item->ordered_total_weight_kg)->toBeGreaterThan(0)
         ->and((float) $item->price_per_kg)->toBe(6.5);
 });
+
+it('sets the whole chicken cart quantity instead of adding it again when updating', function () {
+    $customer = Customer::factory()->create();
+    $user = User::factory()->create(['customer_id' => $customer->id]);
+    $product = createWholeChickenProduct(pricePerKg: 6.5, boxWeightKg: 10.5);
+
+    $component = Livewire::actingAs($user)
+        ->test('customer.shop-products')
+        ->call('addToCart', $product->id)
+        ->call('incrementProductQuantity', $product->id)
+        ->call('addToCart', $product->id);
+
+    $line = collect($component->get('cart'))->first();
+
+    expect($component->get('cart'))->toHaveCount(1)
+        ->and((float) $line['quantity'])->toBe(2.0)
+        ->and((float) $component->get('total'))->toBe(136.5);
+});
