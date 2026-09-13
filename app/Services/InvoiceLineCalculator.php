@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
  *
  * The invoice record, the PDF and the UBL export must all use this calculator
  * so they can never produce diverging amounts. Billing is based on delivered
- * weight in kg (delivered quantity × snapshot box weight), the snapshot price
+ * weight in kg (OrderItem::billableWeightKg: actual or loaded weight for whole chicken), the snapshot price
  * per kg on the order item, and the per-line VAT rate snapshot.
  */
 class InvoiceLineCalculator
@@ -149,7 +149,7 @@ class InvoiceLineCalculator
             $deliveryItem = $delivery?->items->firstWhere('order_item_id', $item->id);
             $deliveredQuantity = (float) ($deliveryItem?->delivered_quantity ?? 0);
             $boxWeightKg = (float) $item->box_weight_kg;
-            $deliveredKg = round($deliveredQuantity * $boxWeightKg, 3);
+            $deliveredKg = $item->billableWeightKg($deliveredQuantity);
             $pricePerKg = (float) $item->price_per_kg;
             $lineSubtotal = round($deliveredKg * $pricePerKg, 2);
             $vatRate = $this->lineVatRate($order, $item);
@@ -160,7 +160,7 @@ class InvoiceLineCalculator
                 'type' => self::TYPE_PRODUCT,
                 'article_code' => $item->product?->exact_article_code ?? '',
                 'product_name' => $item->product_name,
-                'unit' => $item->unit,
+                'unit' => $item->billableUnit(),
                 'ordered_quantity' => (float) $item->quantity,
                 'delivered_quantity' => $deliveredQuantity,
                 'box_weight_kg' => $boxWeightKg,

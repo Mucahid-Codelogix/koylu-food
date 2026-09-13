@@ -56,7 +56,6 @@ class DeliveryNoteService
         $totalWeightKg = 0.0;
 
         foreach ($order->items as $item) {
-            $boxWeightKg = (float) $item->box_weight_kg;
             $orderedQuantity = (float) $item->quantity;
             $plannedQuantity = (float) ($item->loaded_packaging_quantity ?? $item->quantity);
 
@@ -65,15 +64,16 @@ class DeliveryNoteService
             $missedReason = $deliveryItem->missed_reason ?? null;
 
             $quantityForWeight = $isFinal ? $deliveredQuantity : $plannedQuantity;
+            $weightKg = $item->billableWeightKg($quantityForWeight);
 
             $lines[] = [
                 'product_name' => $item->product_name,
                 'supplier_name' => $item->supplier_name,
-                'unit' => $item->unit,
+                'unit' => $item->billableUnit(),
                 'quantity' => $this->formatQuantity($plannedQuantity),
                 'ordered_quantity' => $this->formatQuantity($orderedQuantity),
                 'delivered_quantity' => $this->formatQuantity($deliveredQuantity),
-                'weight_kg' => round($quantityForWeight * $boxWeightKg, 2),
+                'weight_kg' => round($weightKg, 2),
                 'missed_reason' => $missedReason,
                 'is_missed' => $deliveredQuantity == 0.0 && filled($missedReason),
                 'has_deviation' => abs($deliveredQuantity - $orderedQuantity) > 0.001,
@@ -83,7 +83,7 @@ class DeliveryNoteService
 
             $totalQuantity += $plannedQuantity;
             $totalDeliveredQuantity += $deliveredQuantity;
-            $totalWeightKg += $quantityForWeight * $boxWeightKg;
+            $totalWeightKg += $weightKg;
         }
 
         return [

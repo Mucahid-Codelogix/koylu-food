@@ -118,6 +118,7 @@ class DriverLoadingPhase extends Page
                     'ordered_variant_label' => $item->productGramVariant?->displayLabel() ?? '—',
                     'ordered_pieces' => $item->ordered_pieces,
                     'ordered_total_weight_kg' => $item->ordered_total_weight_kg,
+                    'variant_weight_kg' => (float) ($item->loaded_total_weight_kg ?? $item->ordered_total_weight_kg),
                     'allows_substitute' => (bool) $item->product?->allows_loading_substitute,
                     'gram_variants' => $item->product?->activeGramVariants ?? collect(),
                 ];
@@ -206,32 +207,42 @@ class DriverLoadingPhase extends Page
 
     public function saveLoadedVariant(int $orderItemId): void
     {
+        $this->persistLoadedVariant($orderItemId, notifyOnSuccess: true);
+    }
+
+    /**
+     * Sla de gekozen gramvariant op. Geeft false terug als dat niet mag of de
+     * verplichte reden ontbreekt, zodat de chauffeur niet ongemerkt doorgaat.
+     */
+    private function persistLoadedVariant(int $orderItemId, bool $notifyOnSuccess): bool
+    {
         $orderItem = OrderItem::query()
             ->with(['product.activeGramVariants', 'productGramVariant'])
             ->findOrFail($orderItemId);
 
         if (! $orderItem->isWholeChicken()) {
-            return;
+            return true;
         }
 
         $data = $this->loadingData[$orderItemId] ?? [];
-        $variantId = $data['loaded_gram_variant_id'] ?? $orderItem->product_gram_variant_id;
+        $variantId = (int) ($data['loaded_gram_variant_id'] ?? $orderItem->product_gram_variant_id);
 
-        $variant = $orderItem->product?->activeGramVariants
-            ->firstWhere('id', $variantId)
+        $variant = $orderItem->product?->activeGramVariants->firstWhere('id', $variantId)
             ?? ProductGramVariant::query()->find($variantId);
 
         if (! $variant) {
             Notification::make()->title('Ongeldige gramvariant')->danger()->send();
 
-            return;
+            return false;
         }
 
         $reason = filled($data['substitution_reason'] ?? null)
             ? $data['substitution_reason']
             : null;
 
-        if ($variant->id !== $orderItem->product_gram_variant_id && ! $orderItem->product?->allows_loading_substitute) {
+        $isSubstitute = $variant->id !== $orderItem->product_gram_variant_id;
+
+        if ($isSubstitute && ! $orderItem->product?->allows_loading_substitute) {
             Notification::make()
                 ->title('Alternatief niet toegestaan voor dit product')
                 ->warning()
@@ -239,21 +250,47 @@ class DriverLoadingPhase extends Page
 
             $this->loadingData[$orderItemId]['loaded_gram_variant_id'] = $orderItem->product_gram_variant_id;
 
-            return;
+            return false;
         }
 
-        if ($variant->id !== $orderItem->product_gram_variant_id && blank($reason)) {
+        if ($isSubstitute && blank($reason)) {
             Notification::make()
                 ->title('Geef een reden op bij een alternatieve variant')
                 ->warning()
                 ->send();
 
-            return;
+            return false;
         }
 
         app(OrderItemLoadingService::class)->recordLoadedVariant($orderItem, $variant, $reason);
 
-        Notification::make()->title('Geladen variant opgeslagen')->success()->send();
+        if ($notifyOnSuccess) {
+            Notification::make()->title('Geladen variant opgeslagen')->success()->send();
+        }
+
+        return true;
+    }
+
+    /**
+     * Een in de laadkaart gewijzigde gramvariant wordt ook opgeslagen bij
+     * doorgaan, niet alleen via de knop "Variant opslaan".
+     */
+    private function persistChangedVariant(int $orderItemId): bool
+    {
+        $orderItem = OrderItem::query()->find($orderItemId);
+        $selected = $this->loadingData[$orderItemId]['loaded_gram_variant_id'] ?? null;
+
+        if ($orderItem === null || ! $orderItem->isWholeChicken() || blank($selected)) {
+            return true;
+        }
+
+        $current = $orderItem->loaded_gram_variant_id ?? $orderItem->product_gram_variant_id;
+
+        if ((int) $selected === (int) $current) {
+            return true;
+        }
+
+        return $this->persistLoadedVariant($orderItemId, notifyOnSuccess: false);
     }
 
     /**
@@ -306,13 +343,18 @@ class DriverLoadingPhase extends Page
         return rtrim(rtrim(number_format((float) $boxes, 2, ',', ''), '0'), ',');
     }
 
-    private function saveActualWeightsForCurrentProduct(): void
+    private function saveActualWeightsForCurrentProduct(): bool
     {
         $product = $this->getCurrentProduct();
         $loadingService = app(OrderItemLoadingService::class);
 
         foreach ($product['customers'] ?? [] as $row) {
             $itemId = $row['order_item_id'];
+
+            if (! $this->persistChangedVariant($itemId)) {
+                return false;
+            }
+
             $orderItem = OrderItem::query()
                 ->with(['productGramVariant', 'loadedGramVariant'])
                 ->findOrFail($itemId);
@@ -329,6 +371,8 @@ class DriverLoadingPhase extends Page
         }
 
         $this->refreshRouteData();
+
+        return true;
     }
 
     private function decimalInput(mixed $value): ?float
@@ -357,7 +401,9 @@ class DriverLoadingPhase extends Page
 
     public function nextProduct(): void
     {
-        $this->saveActualWeightsForCurrentProduct();
+        if (! $this->saveActualWeightsForCurrentProduct()) {
+            return;
+        }
 
         if ($this->currentProductIndex < count($this->products) - 1) {
             $this->currentProductIndex++;
@@ -366,7 +412,9 @@ class DriverLoadingPhase extends Page
 
     public function previousProduct(): void
     {
-        $this->saveActualWeightsForCurrentProduct();
+        if (! $this->saveActualWeightsForCurrentProduct()) {
+            return;
+        }
 
         if ($this->currentProductIndex > 0) {
             $this->currentProductIndex--;
@@ -375,7 +423,9 @@ class DriverLoadingPhase extends Page
 
     public function finishLoading(): void
     {
-        $this->saveActualWeightsForCurrentProduct();
+        if (! $this->saveActualWeightsForCurrentProduct()) {
+            return;
+        }
 
         $loadingService = app(OrderItemLoadingService::class);
 

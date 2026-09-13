@@ -87,6 +87,47 @@ class OrderItem extends Model
             && $this->loaded_gram_variant_id !== $this->substituted_from_gram_variant_id;
     }
 
+    /**
+     * Gewicht dat voor een geleverd aantal verpakkingen gefactureerd en op de
+     * leverbon gezet wordt. Bij hele kip is het werkelijk ingevulde gewicht
+     * leidend (naar verhouding bij een deellevering), daarna het doosgewicht van
+     * de geladen variant; anders het bestelde doosgewicht.
+     */
+    public function billableWeightKg(float $deliveredQuantity): float
+    {
+        if ($this->isWholeChicken()) {
+            if ((float) $this->loaded_actual_weight_kg > 0) {
+                $loadedQuantity = (float) ($this->loaded_packaging_quantity ?? $this->quantity);
+
+                return $loadedQuantity > 0
+                    ? round((float) $this->loaded_actual_weight_kg * $deliveredQuantity / $loadedQuantity, 3)
+                    : 0.0;
+            }
+
+            if ($this->loaded_box_weight_kg !== null) {
+                return round($deliveredQuantity * (float) $this->loaded_box_weight_kg, 3);
+            }
+        }
+
+        return round($deliveredQuantity * (float) $this->box_weight_kg, 3);
+    }
+
+    /**
+     * Eenheid voor factuur en leverbon: bij hele kip de geladen variant als die
+     * afwijkt van de bestelde.
+     */
+    public function billableUnit(): string
+    {
+        if ($this->isWholeChicken()
+            && $this->loaded_gram_variant_id !== null
+            && $this->loaded_gram_variant_id !== $this->product_gram_variant_id
+            && $this->loadedGramVariant !== null) {
+            return sprintf('Doos %s', $this->loadedGramVariant->displayLabel());
+        }
+
+        return (string) $this->unit;
+    }
+
     public function effectiveGramVariantLabel(): string
     {
         if ($this->loadedGramVariant) {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DeliveryStatus;
+use App\Enums\ProductType;
 use App\Filament\Resources\Deliveries\Pages\ViewDelivery;
 use App\Models\CrateTransaction;
 use App\Models\Customer;
@@ -9,6 +10,7 @@ use App\Models\DeliveryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductGramVariant;
 use App\Models\Route;
 use App\Models\RouteStop;
 use App\Models\User;
@@ -255,4 +257,51 @@ it('toont kratten en een knop naar de leverbon op de leveringspagina', function 
         ->assertSee('9')
         ->assertActionVisible('deliveryNote')
         ->assertActionHasUrl('deliveryNote', route('leverbon.download', ['delivery' => $delivery, 'bekijken' => 1]));
+});
+
+it('zet op de definitieve leverbon het werkelijke gewicht en de geladen variant van hele kip', function () {
+    [, , $order] = orderOnRoute();
+
+    $product = Product::factory()->create(['name' => 'Hele kip', 'product_type' => ProductType::WholeChicken]);
+    $ordered = ProductGramVariant::factory()->create(['product_id' => $product->id, 'weight_grams' => 1200, 'label' => '1200 g', 'box_weight_kg' => 12.35]);
+    $loaded = ProductGramVariant::factory()->create(['product_id' => $product->id, 'weight_grams' => 1300, 'label' => '1300 g', 'box_weight_kg' => 13.0]);
+
+    $item = OrderItem::factory()->create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'product_name' => 'Hele kip',
+        'product_type' => ProductType::WholeChicken,
+        'product_gram_variant_id' => $ordered->id,
+        'unit' => 'Doos 1200 g',
+        'quantity' => 2,
+        'box_weight_kg' => 12.35,
+    ]);
+
+    $item->forceFill([
+        'loaded_gram_variant_id' => $loaded->id,
+        'loaded_box_weight_kg' => 13.0,
+        'loaded_packaging_quantity' => 2,
+        'loaded_actual_weight_kg' => 26.4,
+    ])->save();
+
+    $delivery = Delivery::create([
+        'order_id' => $order->id,
+        'delivered_at' => now(),
+        'receiver_name' => 'Jan de Vries',
+        'status' => DeliveryStatus::DELIVERED,
+    ]);
+
+    DeliveryItem::create([
+        'delivery_id' => $delivery->id,
+        'order_item_id' => $item->id,
+        'product_id' => $product->id,
+        'ordered_quantity' => 2,
+        'delivered_quantity' => 2,
+    ]);
+
+    $data = app(DeliveryNoteService::class)->viewData($order->fresh('items'), $delivery->fresh('items'));
+    $line = collect($data['lines'])->firstWhere('product_name', 'Hele kip');
+
+    expect($line['weight_kg'])->toBe(26.4)
+        ->and($line['unit'])->toBe('Doos 1300 g');
 });

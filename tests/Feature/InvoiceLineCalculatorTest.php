@@ -1,10 +1,13 @@
 <?php
 
+use App\Enums\ProductType;
 use App\Models\Customer;
 use App\Models\Delivery;
 use App\Models\DeliveryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductGramVariant;
 use App\Services\InvoiceLineCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -243,4 +246,111 @@ it('bills zero for missing delivery lines', function () {
     expect($lines[0]['delivered_kg'])->toBe(0.0)
         ->and($lines[0]['line_subtotal'])->toBe(0.0)
         ->and($lines[0]['line_vat'])->toBe(0.0);
+});
+
+/**
+ * @param  array<string, mixed>  $itemAttributes
+ * @param  array<string, mixed>  $loading
+ * @return array{order: Order, delivery: Delivery}
+ */
+function makeLoadedLineOrder(array $itemAttributes, array $loading, float $deliveredQuantity): array
+{
+    $order = Order::factory()->for(Customer::factory())->create();
+    $delivery = Delivery::factory()->create(['order_id' => $order->id]);
+
+    $item = OrderItem::factory()->create([
+        'order_id' => $order->id,
+        'price_per_kg' => 6.5,
+        'vat_rate' => 9,
+        'unit_price' => 0,
+        'subtotal' => 0,
+        ...$itemAttributes,
+    ]);
+
+    // Laadgegevens zoals het laadproces ze vastlegt.
+    $item->forceFill($loading)->save();
+
+    DeliveryItem::query()->create([
+        'delivery_id' => $delivery->id,
+        'order_item_id' => $item->id,
+        'product_id' => $item->product_id,
+        'ordered_quantity' => $item->quantity,
+        'delivered_quantity' => $deliveredQuantity,
+    ]);
+
+    return [
+        'order' => $order->fresh(['items', 'customer']),
+        'delivery' => $delivery->fresh('items'),
+    ];
+}
+
+it('factureert hele kip op het werkelijk ingevulde gewicht, naar verhouding bij een deellevering', function () {
+    $product = Product::factory()->create(['product_type' => ProductType::WholeChicken]);
+
+    ['order' => $order, 'delivery' => $delivery] = makeLoadedLineOrder(
+        [
+            'product_id' => $product->id,
+            'product_type' => ProductType::WholeChicken,
+            'unit' => 'Doos 1200 g',
+            'quantity' => 4,
+            'box_weight_kg' => 12.35,
+        ],
+        ['loaded_actual_weight_kg' => 50.0],
+        deliveredQuantity: 2,
+    );
+
+    $line = app(InvoiceLineCalculator::class)->lines($order, $delivery)->first();
+
+    // 50 kg geladen voor 4 dozen, 2 geleverd: 25 kg. Besteld doosgewicht blijft staan voor de afwijking.
+    expect($line['delivered_kg'])->toBe(25.0)
+        ->and($line['line_subtotal'])->toBe(162.5)
+        ->and($line['box_weight_kg'])->toBe(12.35)
+        ->and($line['unit'])->toBe('Doos 1200 g');
+});
+
+it('factureert hele kip op het doosgewicht van de geladen variant als er geen gewicht is ingevuld', function () {
+    $product = Product::factory()->create(['product_type' => ProductType::WholeChicken]);
+    $ordered = ProductGramVariant::factory()->create(['product_id' => $product->id, 'weight_grams' => 1200, 'label' => '1200 g', 'box_weight_kg' => 12.35]);
+    $loaded = ProductGramVariant::factory()->create(['product_id' => $product->id, 'weight_grams' => 1300, 'label' => '1300 g', 'box_weight_kg' => 13.0]);
+
+    ['order' => $order, 'delivery' => $delivery] = makeLoadedLineOrder(
+        [
+            'product_id' => $product->id,
+            'product_type' => ProductType::WholeChicken,
+            'product_gram_variant_id' => $ordered->id,
+            'unit' => 'Doos 1200 g',
+            'quantity' => 2,
+            'box_weight_kg' => 12.35,
+        ],
+        [
+            'loaded_gram_variant_id' => $loaded->id,
+            'loaded_box_weight_kg' => 13.0,
+            'loaded_packaging_quantity' => 2,
+        ],
+        deliveredQuantity: 2,
+    );
+
+    $line = app(InvoiceLineCalculator::class)->lines($order, $delivery)->first();
+
+    expect($line['delivered_kg'])->toBe(26.0)
+        ->and($line['line_subtotal'])->toBe(169.0)
+        ->and($line['unit'])->toBe('Doos 1300 g');
+});
+
+it('laat een gewoon product factureren op het doosgewicht, ook als er een gewicht is ingevuld', function () {
+    ['order' => $order, 'delivery' => $delivery] = makeLoadedLineOrder(
+        [
+            'product_type' => ProductType::Standard,
+            'product_gram_variant_id' => null,
+            'unit' => 'Doos 10.000 kg',
+            'quantity' => 3,
+            'box_weight_kg' => 10,
+        ],
+        ['loaded_actual_weight_kg' => 99.0],
+        deliveredQuantity: 3,
+    );
+
+    $line = app(InvoiceLineCalculator::class)->lines($order, $delivery)->first();
+
+    expect($line['delivered_kg'])->toBe(30.0);
 });
