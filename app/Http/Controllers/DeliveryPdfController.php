@@ -9,6 +9,7 @@ use App\Models\Route;
 use App\Models\User;
 use App\Services\DeliveryNoteService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class DeliveryPdfController extends Controller
@@ -30,14 +31,15 @@ class DeliveryPdfController extends Controller
 
     /**
      * Definitieve leverbon: geleverde aantallen, kratten en handtekening.
+     * Met ?bekijken=1 opent de PDF in de browser in plaats van als download.
      */
-    public function download(Delivery $delivery): Response
+    public function download(Request $request, Delivery $delivery): Response
     {
         $delivery->load(['order.customer', 'items']);
 
         $this->authorizeOrderAccess($delivery->order, allowCustomer: true);
 
-        return $this->render($delivery->order, $delivery);
+        return $this->render($delivery->order, $delivery, inline: $request->boolean('bekijken'));
     }
 
     /**
@@ -83,13 +85,14 @@ class DeliveryPdfController extends Controller
         );
     }
 
-    private function render(Order $order, ?Delivery $delivery): Response
+    private function render(Order $order, ?Delivery $delivery, bool $inline = false): Response
     {
         $data = $this->deliveryNotes->viewData($order, $delivery);
 
         $pdf = Pdf::loadView('pdf.leverbon', $data)->setPaper('a4', 'portrait');
+        $filename = $this->deliveryNotes->filename($order, $data['isFinal']);
 
-        return $pdf->download($this->deliveryNotes->filename($order, $data['isFinal']));
+        return $inline ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     private function authorizeOrderAccess(Order $order, bool $allowCustomer): void

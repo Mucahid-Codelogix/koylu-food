@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Deliveries\Schemas;
 
+use App\Models\Delivery;
+use App\Services\DeliveryNoteService;
 use App\Support\DeliveryDeviationSummary;
 use App\Support\UploadStorage;
 use Filament\Infolists\Components\ImageEntry;
@@ -55,6 +57,19 @@ class DeliveryInfolist
                             ->disk(UploadStorage::diskName())
                             ->height(120)
                             ->placeholder('Geen handtekening'),
+                    ]),
+
+                Section::make('Kratten')
+                    ->icon('heroicon-o-archive-box')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('crates_given')
+                            ->label('Meegegeven kratten')
+                            ->state(fn (Delivery $record): int => app(DeliveryNoteService::class)->crateTotals($record->order)['given']),
+
+                        TextEntry::make('crates_returned')
+                            ->label('Retour ontvangen kratten')
+                            ->state(fn (Delivery $record): int => app(DeliveryNoteService::class)->crateTotals($record->order)['returned']),
                     ]),
 
                 Section::make('Leveringsregels')

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DeliveryStatus;
+use App\Filament\Resources\Deliveries\Pages\ViewDelivery;
 use App\Models\CrateTransaction;
 use App\Models\Customer;
 use App\Models\Delivery;
@@ -13,6 +14,7 @@ use App\Models\RouteStop;
 use App\Models\User;
 use App\Services\DeliveryNoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -202,4 +204,55 @@ it('geeft de definitieve leverbon aan de eigen klant maar niet aan een andere', 
     $this->actingAs($otherUser)
         ->get(route('leverbon.download', $delivery))
         ->assertForbidden();
+});
+
+it('opent de definitieve leverbon in de browser om te bekijken en downloadt hem anders', function () {
+    [, , $order] = orderOnRoute();
+
+    $delivery = Delivery::create([
+        'order_id' => $order->id,
+        'delivered_at' => now(),
+        'receiver_name' => 'Jan de Vries',
+        'status' => DeliveryStatus::DELIVERED,
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $inline = $this->actingAs($admin)
+        ->get(route('leverbon.download', ['delivery' => $delivery, 'bekijken' => 1]))
+        ->assertOk();
+
+    $download = $this->actingAs($admin)
+        ->get(route('leverbon.download', $delivery))
+        ->assertOk();
+
+    expect($inline->headers->get('content-disposition'))->toStartWith('inline')
+        ->and($download->headers->get('content-disposition'))->toStartWith('attachment');
+});
+
+it('toont kratten en een knop naar de leverbon op de leveringspagina', function () {
+    [, $route, $order] = orderOnRoute();
+
+    $delivery = Delivery::create([
+        'order_id' => $order->id,
+        'delivered_at' => now(),
+        'receiver_name' => 'Jan de Vries',
+        'status' => DeliveryStatus::DELIVERED,
+    ]);
+
+    CrateTransaction::create([
+        'customer_id' => $order->customer_id,
+        'route_id' => $route->id,
+        'crates_given' => 17,
+        'crates_returned' => 9,
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(ViewDelivery::class, ['record' => $delivery->id])
+        ->assertSee('Meegegeven kratten')
+        ->assertSee('17')
+        ->assertSee('Retour ontvangen kratten')
+        ->assertSee('9')
+        ->assertActionVisible('deliveryNote')
+        ->assertActionHasUrl('deliveryNote', route('leverbon.download', ['delivery' => $delivery, 'bekijken' => 1]));
 });

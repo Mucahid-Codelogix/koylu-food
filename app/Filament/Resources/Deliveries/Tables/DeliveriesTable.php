@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Deliveries\Tables;
 
+use App\Models\Delivery;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +40,12 @@ class DeliveriesTable
                 //
             ])
             ->recordActions([
+                Action::make('deliveryNote')
+                    ->label('Leverbon')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->url(fn (Delivery $record): string => route('leverbon.download', ['delivery' => $record, 'bekijken' => 1]))
+                    ->openUrlInNewTab(),
                 ViewAction::make(),
                 EditAction::make(),
             ]);

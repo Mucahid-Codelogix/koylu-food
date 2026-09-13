@@ -114,9 +114,12 @@ class DeliveryNoteService
     }
 
     /**
+     * Kratten van de levering, zoals ze op de leverbon staan. Ook gebruikt op
+     * de leveringspagina in de admin, zodat beide dezelfde cijfers tonen.
+     *
      * @return array{given: int, returned: int}
      */
-    private function crateTotals(Order $order): array
+    public function crateTotals(Order $order): array
     {
         $routeId = $order->routeStops->first()?->route_id;
 
