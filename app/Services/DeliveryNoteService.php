@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentMethod;
 use App\Models\CrateTransaction;
 use App\Models\Delivery;
 use App\Models\Order;
@@ -36,6 +37,7 @@ class DeliveryNoteService
      *     lines: array<int, array<string, mixed>>,
      *     totals: array{quantity: float, delivered_quantity: float, weight_kg: float},
      *     crates: array{given: int, returned: int},
+     *     cash: array{is_cash: bool, amount: ?float, signature: ?string},
      *     signatures: array{receiver: ?string, driver: ?string},
      * }
      */
@@ -97,10 +99,29 @@ class DeliveryNoteService
                 'weight_kg' => round($totalWeightKg, 2),
             ],
             'crates' => $this->crateTotals($order),
+            'cash' => $this->cashData($order, $delivery),
             'signatures' => [
                 'receiver' => $this->signatureDataUri($delivery?->signature_path),
                 'driver' => $this->signatureDataUri($delivery?->driver_signature_path),
             ],
+        ];
+    }
+
+    /**
+     * Contante betaling op de definitieve leverbon: het bedrag uit de contant
+     * betaalde factuur en de handtekening van de bezorger voor ontvangst van het geld.
+     *
+     * @return array{is_cash: bool, amount: ?float, signature: ?string}
+     */
+    private function cashData(Order $order, ?Delivery $delivery): array
+    {
+        $invoice = $delivery !== null ? $order->invoice : null;
+        $isCash = $invoice?->payment_method === PaymentMethod::CASH;
+
+        return [
+            'is_cash' => $isCash,
+            'amount' => $isCash ? (float) ($invoice->paid_amount ?? $invoice->total_amount) : null,
+            'signature' => $isCash ? $this->signatureDataUri($delivery?->cash_signature_path) : null,
         ];
     }
 

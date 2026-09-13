@@ -120,6 +120,7 @@
     </table>
 
     {{-- Kratten --}}
+    <div class="keep-together">
     <div class="section-title">Kratten</div>
     <table class="layout-table">
         <tr>
@@ -145,8 +146,46 @@
         </td>
         </tr>
     </table>
+    </div>
+
+    {{-- Contante betaling: op de werkbon met pen in te vullen, op de definitieve bon alleen bij contant --}}
+    @if (! $isFinal || ($cash['is_cash'] ?? false))
+        <div class="keep-together">
+        <div class="section-title">Contante betaling</div>
+        <table class="layout-table">
+            <tr>
+            <td>
+            <div class="crate-block">
+                <div class="crate-label">Contant ontvangen bedrag</div>
+                @if ($isFinal)
+                    <div class="crate-value">€ {{ number_format($cash['amount'] ?? 0, 2, ',', '.') }}</div>
+                @else
+                    <div class="fill-box"></div>
+                    <div class="sign-line">Alleen invullen bij contante betaling</div>
+                @endif
+            </div>
+            </td>
+            <td>
+            <div class="signature-block">
+                <div class="signature-block-title">Bezorger — geld ontvangen</div>
+                @if ($isFinal)
+                    @if ($cash['signature'] ?? null)
+                        <img src="{{ $cash['signature'] }}" alt="Handtekening ontvangst geld" />
+                    @else
+                        <p style="margin-top: 26px;" class="muted">Geen handtekening vastgelegd</p>
+                    @endif
+                @else
+                    <div class="sign-area"></div>
+                @endif
+            </div>
+            </td>
+            </tr>
+        </table>
+        </div>
+    @endif
 
     {{-- Handtekeningen --}}
+    <div class="keep-together">
     <div class="section-title">Ondertekening</div>
     <table class="layout-table">
         <tr>
@@ -185,6 +224,7 @@
         </td>
         </tr>
     </table>
+    </div>
 
     {{-- Pagina footer --}}
     <div class="page-footer">

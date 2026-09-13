@@ -210,6 +210,20 @@
                 </label>
 
                 @if ($paidInCash)
+                    @php
+                        $amountDue = $isHandled ? null : $this->cashAmountDue();
+                    @endphp
+
+                    @if ($amountDue !== null)
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Te ontvangen
+                                <span class="block text-xs font-normal text-gray-500">Incl. btw en statiegeld, volgens de ingevulde aantallen</span>
+                            </span>
+                            <span class="text-2xl font-extrabold tabular-nums text-gray-900 dark:text-white">€ {{ number_format($amountDue, 2, ',', '.') }}</span>
+                        </div>
+                    @endif
+
                     <div>
                         <label class="text-xs font-medium text-gray-500">Ontvangen bedrag (optioneel)</label>
                         <div class="mt-1 flex items-center gap-2">
@@ -220,7 +234,7 @@
                                 min="0"
                                 wire:model="cashAmount"
                                 @disabled($isHandled)
-                                placeholder="Laat leeg voor het volledige factuurbedrag"
+                                placeholder="{{ $amountDue !== null ? 'Leeg = € '.number_format($amountDue, 2, ',', '.') : 'Laat leeg voor het volledige factuurbedrag' }}"
                                 class="w-full p-2 rounded-xl border-gray-200 text-sm shadow-sm focus:border-primary-400 focus:ring-primary-400 disabled:bg-gray-50 disabled:text-gray-400 dark:bg-gray-900 dark:border-gray-700"
                             />
                         </div>
@@ -255,6 +269,7 @@
                         $registeredSignatures = [
                             'Ontvanger' => $existingDelivery?->signature_path,
                             'Bezorger' => $existingDelivery?->driver_signature_path,
+                            'Geld ontvangen door bezorger' => $existingDelivery?->cash_signature_path,
                         ];
                     @endphp
 
@@ -289,6 +304,15 @@
                         label="Handtekening bezorger"
                         :has-signature="filled($driverSignature)"
                     />
+
+                    @if ($paidInCash)
+                        <x-koylu.signature-pad
+                            pad-id="signature-pad-cash"
+                            property="cashSignature"
+                            label="Handtekening bezorger — geld contant ontvangen"
+                            :has-signature="filled($cashSignature)"
+                        />
+                    @endif
                 @endif
             </div>
         </x-koylu.card>
@@ -544,6 +568,7 @@
                     boot();
 
                     Livewire.on('clear-signature', () => window.clearSignature());
+                    Livewire.hook('commit', ({ succeed }) => succeed(() => boot()));
                     Livewire.on('stop-changed', () => {
                         window.clearSignature();
                         boot();

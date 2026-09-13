@@ -25,6 +25,9 @@ class InvoiceLineCalculator
     /**
      * Build the billable invoice lines for an order.
      *
+     *
+     * @param  array{given: int, returned: int}|null  $crates  Nog niet opgeslagen kratten, voor een
+     *                                                         bedrag-preview vóór het afronden van een levering.
      * @return Collection<int, array{
      *     order_item_id: int,
      *     product_name: string,
@@ -42,10 +45,10 @@ class InvoiceLineCalculator
      *     is_missed: bool,
      * }>
      */
-    public function lines(Order $order, ?Delivery $delivery): Collection
+    public function lines(Order $order, ?Delivery $delivery, ?array $crates = null): Collection
     {
         return $this->productLines($order, $delivery)
-            ->concat($this->crateDepositLines($order, $delivery))
+            ->concat($this->crateDepositLines($order, $delivery, $crates))
             ->values();
     }
 
@@ -54,9 +57,10 @@ class InvoiceLineCalculator
      * en het direct retour ontvangen aantal wordt op dezelfde factuur verrekend.
      * Statiegeld is btw-vrijgesteld.
      *
+     * @param  array{given: int, returned: int}|null  $crates
      * @return Collection<int, array<string, mixed>>
      */
-    public function crateDepositLines(Order $order, ?Delivery $delivery): Collection
+    public function crateDepositLines(Order $order, ?Delivery $delivery, ?array $crates = null): Collection
     {
         if ($delivery === null) {
             return collect();
@@ -68,7 +72,7 @@ class InvoiceLineCalculator
             return collect();
         }
 
-        $crates = $this->crateTotals($order);
+        $crates ??= $this->crateTotals($order);
         $lines = collect();
 
         if ($crates['given'] > 0) {
@@ -189,9 +193,9 @@ class InvoiceLineCalculator
      *     vat_by_rate: array<int, array{rate: float, taxable_amount: float, vat_amount: float}>,
      * }
      */
-    public function totals(Order $order, ?Delivery $delivery): array
+    public function totals(Order $order, ?Delivery $delivery, ?array $crates = null): array
     {
-        $lines = $this->lines($order, $delivery);
+        $lines = $this->lines($order, $delivery, $crates);
         $subtotal = round((float) $lines->sum('line_subtotal'), 2);
         $vatByRate = $this->vatByRate($lines);
         $vat = round((float) collect($vatByRate)->sum('vat_amount'), 2);

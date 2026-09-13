@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Deliveries\Schemas;
 
+use App\Enums\PaymentMethod;
 use App\Models\Delivery;
 use App\Services\DeliveryNoteService;
 use App\Support\DeliveryDeviationSummary;
@@ -46,17 +47,9 @@ class DeliveryInfolist
                             ->label('Bezorger')
                             ->placeholder('-'),
 
-                        ImageEntry::make('signature_path')
-                            ->label('Handtekening ontvanger')
-                            ->disk(UploadStorage::diskName())
-                            ->height(120)
-                            ->placeholder('Geen handtekening'),
+                        self::signatureEntry('signature_path', 'Handtekening ontvanger'),
 
-                        ImageEntry::make('driver_signature_path')
-                            ->label('Handtekening bezorger')
-                            ->disk(UploadStorage::diskName())
-                            ->height(120)
-                            ->placeholder('Geen handtekening'),
+                        self::signatureEntry('driver_signature_path', 'Handtekening bezorger'),
                     ]),
 
                 Section::make('Kratten')
@@ -70,6 +63,19 @@ class DeliveryInfolist
                         TextEntry::make('crates_returned')
                             ->label('Retour ontvangen kratten')
                             ->state(fn (Delivery $record): int => app(DeliveryNoteService::class)->crateTotals($record->order)['returned']),
+                    ]),
+
+                Section::make('Contante betaling')
+                    ->icon('heroicon-o-banknotes')
+                    ->columns(2)
+                    ->visible(fn (Delivery $record): bool => $record->order?->invoice?->payment_method === PaymentMethod::CASH)
+                    ->schema([
+                        TextEntry::make('cash_amount')
+                            ->label('Contant ontvangen bedrag')
+                            ->state(fn (Delivery $record): ?float => $record->order?->invoice?->paid_amount ?? $record->order?->invoice?->total_amount)
+                            ->money('EUR', locale: 'nl'),
+
+                        self::signatureEntry('cash_signature_path', 'Handtekening bezorger — geld ontvangen'),
                     ]),
 
                 Section::make('Leveringsregels')
@@ -98,5 +104,21 @@ class DeliveryInfolist
                             ->placeholder('-'),
                     ]),
             ]);
+    }
+
+    /**
+     * Handtekening binnen de breedte van de sectie: vaste hoogte, nooit breder dan
+     * het blok, verhouding behouden.
+     */
+    private static function signatureEntry(string $name, string $label): ImageEntry
+    {
+        return ImageEntry::make($name)
+            ->label($label)
+            ->disk(UploadStorage::diskName())
+            ->imageHeight('8rem')
+            ->extraImgAttributes([
+                'style' => 'max-width: 100%; object-fit: contain; object-position: left center;',
+            ])
+            ->placeholder('Geen handtekening');
     }
 }

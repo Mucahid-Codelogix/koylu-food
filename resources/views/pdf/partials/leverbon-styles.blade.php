@@ -13,14 +13,14 @@
         }
 
         .page {
-            padding: 36px 40px;
+            padding: 26px 34px;
         }
 
         /* Header */
         .header {
             width: 100%;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
             border-bottom: 2px solid {{ $brandRed }};
         }
 
@@ -63,7 +63,7 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 10px 0;
-            margin: 0 0 24px -10px;
+            margin: 0 0 12px -10px;
         }
 
         .layout-table td {
@@ -125,13 +125,13 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #6b7280;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 24px;
+            margin-bottom: 12px;
         }
 
         thead tr {
@@ -139,7 +139,7 @@
         }
 
         thead th {
-            padding: 9px 12px;
+            padding: 6px 12px;
             text-align: left;
             font-size: 11px;
             font-weight: 700;
@@ -161,7 +161,7 @@
         }
 
         tbody td {
-            padding: 9px 12px;
+            padding: 6px 12px;
             font-size: 12px;
             color: #374151;
         }
@@ -182,7 +182,7 @@
         }
 
         tfoot td {
-            padding: 9px 12px;
+            padding: 6px 12px;
             font-size: 12px;
             font-weight: 700;
             border-top: 2px solid {{ $brandRed }};
@@ -192,7 +192,7 @@
         .crate-block {
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            padding: 14px;
+            padding: 9px 12px;
         }
 
         .crate-label {
@@ -202,15 +202,15 @@
         }
 
         .crate-value {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 700;
             color: #1a1a1a;
-            margin-top: 6px;
+            margin-top: 3px;
         }
 
         .fill-box {
             margin-top: 8px;
-            height: 36px;
+            height: 28px;
             border: 1px dashed #9ca3af;
             border-radius: 6px;
             background: #fff;
@@ -220,7 +220,7 @@
         .signature-block {
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            padding: 14px;
+            padding: 9px 12px;
         }
 
         .signature-block-title {
@@ -233,7 +233,7 @@
         }
 
         .signature-block img {
-            max-height: 76px;
+            max-height: 52px;
             max-width: 100%;
         }
 
@@ -244,12 +244,12 @@
         }
 
         .sign-area {
-            height: 76px;
+            height: 52px;
             border-bottom: 1px solid #9ca3af;
         }
 
         .sign-line {
-            margin-top: 10px;
+            margin-top: 6px;
             font-size: 10px;
             color: #9ca3af;
         }
@@ -269,4 +269,14 @@
             font-size: 10px;
             color: #9ca3af;
         }
-    </style>
+            /* Een sectie (titel + blokken) blijft bij elkaar: nooit een losse kop onderaan
+           een pagina en nooit een half afgesneden vak. */
+        .keep-together {
+            page-break-inside: avoid;
+        }
+
+        tbody tr,
+        tfoot tr {
+            page-break-inside: avoid;
+        }
+</style>

@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\Route;
 use App\Models\RouteStop;
 use App\Services\CashPaymentService;
+use App\Services\InvoiceLineCalculator;
 use App\Services\InvoiceService;
 use App\Services\OrderWorkflowService;
 use App\Services\RouteWorkflowService;
@@ -49,6 +50,9 @@ class DriverDeliveryPhase extends Page
     public bool $paidInCash = false;
 
     public string $cashAmount = '';
+
+    /** Handtekening van de bezorger voor ontvangst van contant geld. */
+    public string $cashSignature = '';
 
     public function mount(): void
     {
@@ -105,6 +109,7 @@ class DriverDeliveryPhase extends Page
         $this->cratesReturned = 0;
         $this->paidInCash = false;
         $this->cashAmount = '';
+        $this->cashSignature = '';
         $this->deliveryData = [];
 
         $this->dispatch('clear-signature');
@@ -182,6 +187,30 @@ class DriverDeliveryPhase extends Page
         return rtrim(rtrim(number_format($quantity, 2, ',', ''), '0'), ',');
     }
 
+    /**
+     * Bedrag dat de chauffeur contant moet ontvangen: precies wat de factuur wordt,
+     * berekend over de nu ingevulde aantallen en kratten (er is nog niets opgeslagen).
+     */
+    public function cashAmountDue(): float
+    {
+        $order = $this->getCurrentStop()->order->loadMissing(['items.product', 'customer', 'routeStops']);
+
+        $delivery = new Delivery(['order_id' => $order->id]);
+        $delivery->setRelation('items', $order->items->map(function (OrderItem $item): DeliveryItem {
+            $data = $this->deliveryLineFor($item->id);
+
+            return new DeliveryItem([
+                'order_item_id' => $item->id,
+                'delivered_quantity' => $data['is_missed'] ? 0 : ($this->decimalInput($data['delivered_quantity']) ?? 0),
+            ]);
+        }));
+
+        return app(InvoiceLineCalculator::class)->totals($order, $delivery, [
+            'given' => max(0, $this->cratesGiven),
+            'returned' => max(0, $this->cratesReturned),
+        ])['total'];
+    }
+
     private function decimalInput(mixed $value): ?float
     {
         $raw = trim((string) $value);
@@ -219,8 +248,21 @@ class DriverDeliveryPhase extends Page
             return;
         }
 
+        if ($this->paidInCash && empty($this->cashSignature)) {
+            Notification::make()
+                ->title('Handtekening voor ontvangst geld ontbreekt')
+                ->body('Teken voor het contant ontvangen bedrag.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $signaturePath = $this->saveSignature($this->signature, $stop->id, 'ontvanger');
         $driverSignaturePath = $this->saveSignature($this->driverSignature, $stop->id, 'bezorger');
+        $cashSignaturePath = $this->paidInCash
+            ? $this->saveSignature($this->cashSignature, $stop->id, 'contant')
+            : null;
         $deliveryStatus = $this->resolveDeliveryStatus($stop);
 
         $delivery = Delivery::updateOrCreate(
@@ -230,6 +272,7 @@ class DriverDeliveryPhase extends Page
                 'receiver_name' => $this->receiverName,
                 'signature_path' => $signaturePath,
                 'driver_signature_path' => $driverSignaturePath,
+                'cash_signature_path' => $cashSignaturePath,
                 'driver_name' => $this->route->driver?->name,
                 'status' => $deliveryStatus,
             ]

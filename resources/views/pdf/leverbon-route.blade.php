@@ -14,6 +14,7 @@
         'lines' => $note['lines'],
         'totals' => $note['totals'],
         'crates' => $note['crates'],
+        'cash' => $note['cash'],
         'signatures' => $note['signatures'],
         'pageBreak' => ! $loop->last,
     ])
