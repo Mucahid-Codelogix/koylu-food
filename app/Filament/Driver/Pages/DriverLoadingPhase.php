@@ -97,6 +97,7 @@ class DriverLoadingPhase extends Page
                         'total_pieces' => 0,
                         'supplier_breakdown' => [],
                         'variant_breakdown' => [],
+                        'packaging_breakdown' => [],
                         'customers' => [],
                     ];
                 }
@@ -156,6 +157,28 @@ class DriverLoadingPhase extends Page
                         $products[$productId]['variant_breakdown'][$variantKey]['supplier_breakdown'][$item->supplier_name] =
                             ($products[$productId]['variant_breakdown'][$variantKey]['supplier_breakdown'][$item->supplier_name] ?? 0) + $boxQty;
                     }
+                } else {
+                    // Eén product kan meerdere verpakkingen hebben; die mogen niet onder
+                    // de eenheid van de eerste orderregel samengevoegd worden.
+                    $packagingKey = $item->unit ?? '—';
+
+                    if (! isset($products[$productId]['packaging_breakdown'][$packagingKey])) {
+                        $products[$productId]['packaging_breakdown'][$packagingKey] = [
+                            'label' => $packagingKey,
+                            'box_weight_kg' => (float) $item->box_weight_kg,
+                            'quantity' => 0,
+                            'kg' => 0,
+                            'supplier_breakdown' => [],
+                        ];
+                    }
+
+                    $products[$productId]['packaging_breakdown'][$packagingKey]['quantity'] += $boxQty;
+                    $products[$productId]['packaging_breakdown'][$packagingKey]['kg'] += $boxQty * (float) $item->box_weight_kg;
+
+                    if (filled($item->supplier_name)) {
+                        $products[$productId]['packaging_breakdown'][$packagingKey]['supplier_breakdown'][$item->supplier_name] =
+                            ($products[$productId]['packaging_breakdown'][$packagingKey]['supplier_breakdown'][$item->supplier_name] ?? 0) + $boxQty;
+                    }
                 }
             }
         }
@@ -170,6 +193,12 @@ class DriverLoadingPhase extends Page
                 );
                 $product['variant_breakdown'] = array_values($product['variant_breakdown']);
             }
+
+            uasort(
+                $product['packaging_breakdown'],
+                fn ($a, $b) => $a['box_weight_kg'] <=> $b['box_weight_kg']
+            );
+            $product['packaging_breakdown'] = array_values($product['packaging_breakdown']);
         }
 
         return array_values($products);
@@ -253,6 +282,23 @@ class DriverLoadingPhase extends Page
         }
 
         return abs((float) str_replace(',', '.', (string) $raw) - (float) $orderedQuantity) > 0.001;
+    }
+
+    /**
+     * Eenheid achter het totaal: één verpakking toont haar naam, bij meerdere
+     * verpakkingen is een opgeteld totaal alleen als "verpakkingen" zinvol.
+     *
+     * @param  array<string, mixed>  $product
+     */
+    public function totalUnitLabel(array $product): string
+    {
+        if ($product['is_whole_chicken'] ?? false) {
+            return 'doos';
+        }
+
+        return count($product['packaging_breakdown'] ?? []) > 1
+            ? 'verpakkingen'
+            : (string) $product['unit'];
     }
 
     public function formatBoxes(float|int|string $boxes): string

@@ -92,3 +92,61 @@ it('splitst hele kip uit per gramvariant in de laadkaart', function () {
     expect($v1200['kg'])->toBe(12.0);
     expect($v1200['supplier_breakdown'])->toBe(['Pluimveehandel Noord' => 1.0]);
 });
+
+it('toont per klantregel de eigen verpakking en splitst een product met meerdere verpakkingen uit', function () {
+    $driver = User::factory()->driver()->create();
+    $route = Route::factory()->create(['driver_id' => $driver->id]);
+
+    $product = Product::factory()->create(['name' => 'Hele kip']);
+
+    $makeItem = function (int $stopOrder, string $unit, float $quantity, float $boxWeightKg, string $supplier) use ($route, $product): void {
+        $order = Order::factory()->placed()->create();
+        RouteStop::factory()->create([
+            'route_id' => $route->id,
+            'order_id' => $order->id,
+            'stop_order' => $stopOrder,
+        ]);
+
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_name' => 'Hele kip',
+            'product_type' => ProductType::Standard,
+            'product_gram_variant_id' => null,
+            'unit' => $unit,
+            'quantity' => $quantity,
+            'box_weight_kg' => $boxWeightKg,
+            'ordered_pieces' => null,
+            'ordered_total_weight_kg' => $quantity * $boxWeightKg,
+            'supplier_name' => $supplier,
+        ]);
+    };
+
+    // Klant 1 bestelt 2 kratten 1400 g, klant 2 bestelt 1 krat 1200 g.
+    $makeItem(1, 'Krat 1400 g', 2, 14.0, 'Pluimveehandel Noord');
+    $makeItem(2, 'Krat 1200 g', 1, 12.0, 'Kip Express BV');
+
+    $this->actingAs($driver);
+
+    $component = Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id]);
+
+    $product = $component->get('products')[0];
+
+    // Elke klantregel houdt zijn eigen verpakking.
+    expect(collect($product['customers'])->pluck('unit')->all())->toBe(['Krat 1400 g', 'Krat 1200 g']);
+
+    $breakdown = collect($product['packaging_breakdown']);
+
+    expect($breakdown->pluck('label')->all())->toBe(['Krat 1200 g', 'Krat 1400 g']);
+    expect($breakdown->firstWhere('label', 'Krat 1400 g')['quantity'])->toBe(2.0);
+    expect($breakdown->firstWhere('label', 'Krat 1400 g')['kg'])->toBe(28.0);
+    expect($breakdown->firstWhere('label', 'Krat 1200 g')['supplier_breakdown'])->toBe(['Kip Express BV' => 1.0]);
+
+    $component
+        ->assertSee('Per verpakking laden')
+        ->assertSee('3 verpakkingen')
+        ->assertDontSee('3 Krat 1400 g')
+        // Aantal, gewicht per verpakking en totaal zijn los leesbaar.
+        ->assertSee('2x à 14 kg · 28,00 kg totaal')
+        ->assertSee('totaal 28,00 kg');
+});

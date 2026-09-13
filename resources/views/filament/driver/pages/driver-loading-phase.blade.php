@@ -44,8 +44,8 @@
                     <div class="text-right">
                         <p class="koylu-card-hero-label">Totaal te laden</p>
                         <p class="text-white text-2xl font-bold tabular-nums">
-                            {{ $product['total'] }}
-                            <span class="text-sm font-normal">doos</span>
+                            {{ $this->formatBoxes($product['total']) }}
+                            <span class="text-sm font-normal">{{ $this->totalUnitLabel($product) }}</span>
                         </p>
                         @if ($product['is_whole_chicken'] ?? false)
                             <p class="koylu-card-hero-label mt-0.5">
@@ -76,6 +76,31 @@
                                         <span class="text-base font-extrabold text-gray-900 dark:text-white">{{ $variant['boxes'] }}</span> doos
                                         · {{ number_format($variant['pieces'], 0, ',', '.') }} st
                                         · {{ number_format($variant['kg'], 2, ',', '.') }} kg
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @elseif (count($product['packaging_breakdown'] ?? []) > 1)
+                    <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Per verpakking laden</p>
+                        <div class="space-y-1.5">
+                            @foreach ($product['packaging_breakdown'] as $packaging)
+                                <div class="flex items-start justify-between gap-3 text-sm">
+                                    <span class="text-gray-800 dark:text-gray-100">
+                                        <span class="font-semibold">{{ $packaging['label'] }}</span>
+                                        @if (! empty($packaging['supplier_breakdown']))
+                                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">
+                                                @foreach ($packaging['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                                    {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
+                                                @endforeach
+                                            </span>
+                                        @endif
+                                    </span>
+                                    <span class="tabular-nums text-gray-600 dark:text-gray-300 text-right shrink-0">
+                                        <span class="text-base font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($packaging['quantity']) }}x</span>
+                                        à {{ $this->formatBoxes($packaging['box_weight_kg']) }} kg
+                                        · <span class="font-semibold text-gray-900 dark:text-white">totaal {{ number_format($packaging['kg'], 2, ',', '.') }} kg</span>
                                     </span>
                                 </div>
                             @endforeach
@@ -198,7 +223,7 @@
                                         <td class="text-gray-500 hidden sm:table-cell">{{ $row['city'] }}</td>
                                         <td class="text-right tabular-nums align-top">
                                             <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($row['quantity']) }}</span>
-                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $product['unit'] }}</span>
+                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $row['unit'] }}</span>
 
                                             <x-koylu.loaded-quantity-input
                                                 :order-item-id="$row['order_item_id']"
@@ -228,7 +253,7 @@
                                 <td class="text-right tabular-nums">
                                     <span class="text-xl font-extrabold text-primary-600">{{ $product['total'] }}</span>
                                     <span class="text-sm font-bold text-primary-500 ml-0.5">
-                                        {{ ($product['is_whole_chicken'] ?? false) ? 'doos' : $product['unit'] }}
+                                        {{ $this->totalUnitLabel($product) }}
                                     </span>
                                     @if ($product['is_whole_chicken'] ?? false)
                                         <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -318,7 +343,7 @@
                                     </span>
                                 </div>
                                 <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">
-                                    {{ $p['total'] }} {{ ($p['is_whole_chicken'] ?? false) ? 'doos' : $p['unit'] }}
+                                    {{ $this->formatBoxes($p['total']) }} {{ $this->totalUnitLabel($p) }}
                                 </span>
                             </button>
 
@@ -333,6 +358,25 @@
                                                 </span>
                                             </div>
                                             @foreach ($variant['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                                <div class="flex items-center justify-between gap-3 pl-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    <span>{{ $supplierName }}</span>
+                                                    <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif (count($p['packaging_breakdown'] ?? []) > 1)
+                                <div class="px-5 pb-3 space-y-2">
+                                    @foreach ($p['packaging_breakdown'] as $packaging)
+                                        <div class="pl-9">
+                                            <div class="flex items-center justify-between gap-3 text-xs">
+                                                <span class="font-semibold text-gray-800 dark:text-gray-100">{{ $packaging['label'] }}</span>
+                                                <span class="tabular-nums text-gray-500 dark:text-gray-400 shrink-0">
+                                                    {{ $this->formatBoxes($packaging['quantity']) }}x à {{ $this->formatBoxes($packaging['box_weight_kg']) }} kg · {{ number_format($packaging['kg'], 2, ',', '.') }} kg totaal
+                                                </span>
+                                            </div>
+                                            @foreach ($packaging['supplier_breakdown'] as $supplierName => $supplierBoxes)
                                                 <div class="flex items-center justify-between gap-3 pl-3 text-xs text-gray-500 dark:text-gray-400">
                                                     <span>{{ $supplierName }}</span>
                                                     <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
