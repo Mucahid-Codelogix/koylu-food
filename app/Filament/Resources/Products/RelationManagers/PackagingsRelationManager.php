@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Enums\ProductType;
 use App\Filament\Resources\Products\Schemas\ProductPackagingForm;
+use App\Filament\Support\TableActionGroup;
 use App\Models\Product;
 use App\Models\ProductPackaging;
 use Filament\Actions\BulkActionGroup;
@@ -87,10 +88,12 @@ class PackagingsRelationManager extends RelationManager
                     ->modalWidth(Width::Large),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalHeading('Verpakking bewerken')
-                    ->modalWidth(Width::Large),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    EditAction::make()
+                        ->modalHeading('Verpakking bewerken')
+                        ->modalWidth(Width::Large),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

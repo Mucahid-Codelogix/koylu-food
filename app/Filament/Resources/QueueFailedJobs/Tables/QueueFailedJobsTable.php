@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\QueueFailedJobs\Tables;
 
 use App\Filament\Resources\QueueFailedJobs\Actions\RetryQueueFailedJobAction;
+use App\Filament\Support\TableActionGroup;
 use App\Models\QueueFailedJob;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -58,11 +59,13 @@ class QueueFailedJobsTable
                     ->default(),
             ])
             ->recordActions([
-                RetryQueueFailedJobAction::make(),
-                ViewAction::make(),
-                DeleteAction::make()
-                    ->label('Verwijderen')
-                    ->modalHeading('Mislukte job verwijderen'),
+                TableActionGroup::make([
+                    RetryQueueFailedJobAction::make(),
+                    ViewAction::make(),
+                    DeleteAction::make()
+                        ->label('Verwijderen')
+                        ->modalHeading('Mislukte job verwijderen'),
+                ]),
             ]);
     }
 }

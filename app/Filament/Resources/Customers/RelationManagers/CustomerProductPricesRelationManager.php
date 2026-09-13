@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Customers\RelationManagers;
 
 use App\Filament\Resources\Customers\Schemas\CustomerProductPriceForm;
+use App\Filament\Support\TableActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -62,10 +63,12 @@ class CustomerProductPricesRelationManager extends RelationManager
                     ->modalWidth(Width::Large),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalHeading('Klantprijs bewerken')
-                    ->modalWidth(Width::Large),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    EditAction::make()
+                        ->modalHeading('Klantprijs bewerken')
+                        ->modalWidth(Width::Large),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

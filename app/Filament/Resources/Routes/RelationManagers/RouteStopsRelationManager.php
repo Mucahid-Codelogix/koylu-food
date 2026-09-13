@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Routes\RelationManagers;
 
 use App\Enums\RouteStatus;
 use App\Enums\RouteStopStatus;
+use App\Filament\Support\TableActionGroup;
 use App\Models\Order;
 use App\Models\Route;
 use App\Services\RouteWorkflowService;
@@ -193,11 +194,13 @@ class RouteStopsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make()
-                    ->visible(fn (): bool => $this->routeIsEditable()),
-                DeleteAction::make()
-                    ->visible(fn (): bool => $this->routeIsEditable()),
+                TableActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make()
+                        ->visible(fn (): bool => $this->routeIsEditable()),
+                    DeleteAction::make()
+                        ->visible(fn (): bool => $this->routeIsEditable()),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Enums\ProductType;
 use App\Filament\Resources\Products\Schemas\ProductGramVariantForm;
+use App\Filament\Support\TableActionGroup;
 use App\Models\Product;
 use App\Models\ProductGramVariant;
 use Filament\Actions\BulkActionGroup;
@@ -79,10 +80,12 @@ class GramVariantsRelationManager extends RelationManager
                     ->modalWidth(Width::Large),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalHeading('Gramvariant bewerken')
-                    ->modalWidth(Width::Large),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    EditAction::make()
+                        ->modalHeading('Gramvariant bewerken')
+                        ->modalWidth(Width::Large),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

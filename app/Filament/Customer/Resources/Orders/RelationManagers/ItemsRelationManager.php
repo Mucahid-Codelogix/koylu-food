@@ -3,6 +3,7 @@
 namespace App\Filament\Customer\Resources\Orders\RelationManagers;
 
 use App\Filament\Resources\Orders\Schemas\OrderItemInfolist;
+use App\Filament\Support\TableActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -48,7 +49,9 @@ class ItemsRelationManager extends RelationManager
                     ->weight('medium'),
             ])
             ->recordActions([
-                ViewAction::make(),
+                TableActionGroup::make([
+                    ViewAction::make(),
+                ]),
             ]);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Customers\Tables;
 
 use App\Filament\Support\RecordDeletionActions;
+use App\Filament\Support\TableActionGroup;
 use App\Jobs\SyncCustomerToExact;
 use App\Models\Customer;
 use App\Support\ExactSyncBadge;
@@ -84,23 +85,25 @@ class CustomersTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                Action::make('syncToExact')
-                    ->label('Sync naar Exact')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->action(function (Customer $record): void {
-                        $record->updateQuietly(['exact_sync_error' => null]);
-                        SyncCustomerToExact::dispatch($record);
+                TableActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    Action::make('syncToExact')
+                        ->label('Sync naar Exact')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(function (Customer $record): void {
+                            $record->updateQuietly(['exact_sync_error' => null]);
+                            SyncCustomerToExact::dispatch($record);
 
-                        Notification::make()
-                            ->title('Sync gestart')
-                            ->body('De klant wordt naar Exact gesynchroniseerd.')
-                            ->success()
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->title('Sync gestart')
+                                ->body('De klant wordt naar Exact gesynchroniseerd.')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

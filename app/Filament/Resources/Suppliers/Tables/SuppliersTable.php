@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Suppliers\Tables;
 
 use App\Filament\Support\RecordDeletionActions;
+use App\Filament\Support\TableActionGroup;
 use App\Jobs\SyncSupplierToExact;
 use App\Models\Supplier;
 use Filament\Actions\Action;
@@ -75,22 +76,24 @@ class SuppliersTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                Action::make('syncToExact')
-                    ->label('Sync naar Exact')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->action(function (Supplier $record): void {
-                        SyncSupplierToExact::dispatch($record);
+                TableActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    Action::make('syncToExact')
+                        ->label('Sync naar Exact')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(function (Supplier $record): void {
+                            SyncSupplierToExact::dispatch($record);
 
-                        Notification::make()
-                            ->title('Sync gestart')
-                            ->body('De leverancier wordt naar Exact gesynchroniseerd.')
-                            ->success()
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->title('Sync gestart')
+                                ->body('De leverancier wordt naar Exact gesynchroniseerd.')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

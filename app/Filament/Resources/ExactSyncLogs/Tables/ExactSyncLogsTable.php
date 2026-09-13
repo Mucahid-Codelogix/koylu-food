@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ExactSyncLogs\Tables;
 
 use App\Filament\Resources\ExactSyncLogs\Actions\RetryExactSyncLogAction;
+use App\Filament\Support\TableActionGroup;
 use App\Models\ExactSyncLog;
 use App\Services\Exact\ExactSyncLogger;
 use Filament\Actions\ViewAction;
@@ -83,8 +84,10 @@ class ExactSyncLogsTable
                     ]),
             ])
             ->recordActions([
-                RetryExactSyncLogAction::make(),
-                ViewAction::make(),
+                TableActionGroup::make([
+                    RetryExactSyncLogAction::make(),
+                    ViewAction::make(),
+                ]),
             ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Customer\Resources\Orders\Tables;
 
+use App\Filament\Support\TableActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -42,7 +43,9 @@ class OrdersTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
+                TableActionGroup::make([
+                    ViewAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

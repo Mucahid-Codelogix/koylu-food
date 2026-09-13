@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders\RelationManagers;
 
 use App\Filament\Resources\Orders\Schemas\OrderItemForm;
 use App\Filament\Resources\Orders\Schemas\OrderItemInfolist;
+use App\Filament\Support\TableActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -66,9 +67,11 @@ class ItemsRelationManager extends RelationManager
                     ->label('Regel toevoegen'),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

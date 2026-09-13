@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Actions;
 
 use App\Enums\InvoiceStatus;
 use App\Filament\Resources\Invoices\InvoiceResource;
+use App\Filament\Support\TableActionGroup;
 use App\Models\Invoice;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -56,10 +57,6 @@ class InvoiceActionGroup
                 ->label('Verwijderen');
         }
 
-        return ActionGroup::make($actions)
-            ->label('Acties')
-            ->icon('heroicon-o-ellipsis-vertical')
-            ->color('gray')
-            ->button();
+        return TableActionGroup::make($actions);
     }
 }

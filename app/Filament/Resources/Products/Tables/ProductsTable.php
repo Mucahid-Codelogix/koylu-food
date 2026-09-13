@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Tables;
 
 use App\Filament\Support\RecordDeletionActions;
+use App\Filament\Support\TableActionGroup;
 use App\Jobs\SyncProductToExact;
 use App\Models\Product;
 use App\Support\UploadStorage;
@@ -98,22 +99,24 @@ class ProductsTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                Action::make('syncToExact')
-                    ->label('Sync naar Exact')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->action(function (Product $record): void {
-                        SyncProductToExact::dispatch($record);
+                TableActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    Action::make('syncToExact')
+                        ->label('Sync naar Exact')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(function (Product $record): void {
+                            SyncProductToExact::dispatch($record);
 
-                        Notification::make()
-                            ->title('Sync gestart')
-                            ->body('Het product wordt naar Exact gesynchroniseerd.')
-                            ->success()
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->title('Sync gestart')
+                                ->body('Het product wordt naar Exact gesynchroniseerd.')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

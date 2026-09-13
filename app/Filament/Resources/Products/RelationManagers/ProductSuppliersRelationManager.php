@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Filament\Resources\Products\Schemas\ProductSupplierOfferForm;
+use App\Filament\Support\TableActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -70,10 +71,12 @@ class ProductSuppliersRelationManager extends RelationManager
                     ->modalWidth(Width::Large),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalHeading('Leverancier bewerken')
-                    ->modalWidth(Width::Large),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    EditAction::make()
+                        ->modalHeading('Leverancier bewerken')
+                        ->modalWidth(Width::Large),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

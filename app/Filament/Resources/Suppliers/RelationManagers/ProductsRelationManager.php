@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Suppliers\RelationManagers;
 
+use App\Filament\Support\TableActionGroup;
 use App\Models\ProductSupplier;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -102,8 +103,10 @@ class ProductsRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                TableActionGroup::make([
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
