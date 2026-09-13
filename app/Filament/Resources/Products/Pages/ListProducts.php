@@ -17,6 +17,16 @@ class ListProducts extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('shopOrder')
+                ->label('Shopvolgorde')
+                ->icon('heroicon-o-bars-arrow-down')
+                ->color('gray')
+                ->url(ProductResource::getUrl('shop-order')),
+            Action::make('loadingOrder')
+                ->label('Laadvolgorde')
+                ->icon('heroicon-o-truck')
+                ->color('gray')
+                ->url(ProductResource::getUrl('loading-order')),
             Action::make('importFromExact')
                 ->label('Importeer uit Exact')
                 ->icon('heroicon-o-arrow-down-tray')

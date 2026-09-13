@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Products;
 use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
+use App\Filament\Resources\Products\Pages\LoadingProductOrder;
+use App\Filament\Resources\Products\Pages\ShopProductOrder;
 use App\Filament\Resources\Products\Pages\ViewProduct;
 use App\Filament\Resources\Products\RelationManagers\GramVariantsRelationManager;
 use App\Filament\Resources\Products\RelationManagers\PackagingsRelationManager;
@@ -71,6 +73,9 @@ class ProductResource extends Resource
         return [
             'index' => ListProducts::route('/'),
             'create' => CreateProduct::route('/create'),
+            // Vóór {record}, anders wordt de URL als product-id gelezen.
+            'shop-order' => ShopProductOrder::route('/shop-volgorde'),
+            'loading-order' => LoadingProductOrder::route('/laadvolgorde'),
             'view' => ViewProduct::route('/{record}'),
             'edit' => EditProduct::route('/{record}/edit'),
         ];

@@ -22,6 +22,8 @@ class Product extends Model
 
     protected $fillable = [
         'name',
+        'shop_sort_order',
+        'loading_sort_order',
         'description',
         'product_type',
         'allows_loading_substitute',
@@ -41,12 +43,29 @@ class Product extends Model
     {
         return [
             'product_type' => ProductType::class,
+            'shop_sort_order' => 'integer',
+            'loading_sort_order' => 'integer',
             'allows_loading_substitute' => 'boolean',
             'min_order_quantity' => 'decimal:2',
             'is_active' => 'boolean',
             'vat_category' => VatCategory::class,
             'exact_synced_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Een nieuw product (admin of Exact-import) komt achteraan in zowel de
+     * shopvolgorde als de laadvolgorde.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product): void {
+            foreach (['shop_sort_order', 'loading_sort_order'] as $column) {
+                if ((int) $product->{$column} === 0) {
+                    $product->{$column} = (int) static::query()->max($column) + 1;
+                }
+            }
+        });
     }
 
     public function isWholeChicken(): bool

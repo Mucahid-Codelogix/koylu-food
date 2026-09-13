@@ -71,6 +71,7 @@ new class extends Component
             ))
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
             ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
+            ->orderBy('shop_sort_order')
             ->orderBy('name')
             ->get();
 

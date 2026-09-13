@@ -89,6 +89,7 @@ class DriverLoadingPhase extends Page
                     $products[$productId] = [
                         'id' => $productId,
                         'name' => $item->product_name,
+                        'loading_sort_order' => $item->product?->loading_sort_order,
                         'unit' => $item->unit,
                         'is_whole_chicken' => $item->isWholeChicken(),
                         'allows_substitute' => (bool) $item->product?->allows_loading_substitute,
@@ -202,7 +203,17 @@ class DriverLoadingPhase extends Page
             $product['packaging_breakdown'] = array_values($product['packaging_breakdown']);
         }
 
-        return array_values($products);
+        // Laadvolgorde zoals de admin die instelt (Producten → Laadvolgorde), niet de toevallige
+        // volgorde waarin producten in de stops voorkomen.
+        $products = array_values($products);
+
+        usort(
+            $products,
+            fn (array $a, array $b): int => [$a['loading_sort_order'] ?? PHP_INT_MAX, $a['name']]
+                <=> [$b['loading_sort_order'] ?? PHP_INT_MAX, $b['name']]
+        );
+
+        return $products;
     }
 
     public function saveLoadedVariant(int $orderItemId): void
