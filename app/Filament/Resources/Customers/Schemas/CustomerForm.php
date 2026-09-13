@@ -106,7 +106,6 @@ class CustomerForm
                             ->prefix('€')
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.01)
                             ->placeholder(fn (): string => number_format(app(AppSettings::class)->crateDepositPrice(), 2, ',', '.'))
                             ->helperText('Laat leeg om de algemene statiegeldprijs uit Instellingen te gebruiken.'),
 

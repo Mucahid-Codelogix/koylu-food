@@ -55,7 +55,6 @@ class CustomerProductPriceForm
                             ->required()
                             ->numeric()
                             ->prefix('€')
-                            ->step(0.0001)
                             ->minValue(0)
                             ->helperText(fn (Get $get): ?string => self::standardPriceHint($get('product_supplier_id'))),
                     ]),

@@ -134,7 +134,7 @@
                                             <div class="mt-1 flex items-center gap-1">
                                                 <input
                                                     type="number"
-                                                    step="0.001"
+                                                    step="any"
                                                     min="0"
                                                     wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
                                                     placeholder="0.000"
@@ -209,7 +209,7 @@
                                             <div class="mt-2 flex items-center justify-end gap-1">
                                                 <input
                                                     type="number"
-                                                    step="0.001"
+                                                    step="any"
                                                     min="0"
                                                     wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
                                                     placeholder="0.000"

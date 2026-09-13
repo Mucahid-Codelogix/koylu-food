@@ -61,8 +61,7 @@ class OrderForm
                             ->numeric()
                             ->default(0)
                             ->prefix('€')
-                            ->minValue(0)
-                            ->step(0.01),
+                            ->minValue(0),
                     ]),
 
                 Section::make('Opmerkingen')

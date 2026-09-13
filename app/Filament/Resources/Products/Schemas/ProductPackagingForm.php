@@ -33,8 +33,7 @@ class ProductPackagingForm
                             ->required()
                             ->numeric()
                             ->suffix('kg')
-                            ->minValue(0.001)
-                            ->step(0.001),
+                            ->minValue(0.001),
 
                         TextInput::make('label')
                             ->label('Weergavenaam')
@@ -46,7 +45,6 @@ class ProductPackagingForm
                             ->label('Minimale afname')
                             ->numeric()
                             ->minValue(0.01)
-                            ->step(0.01)
                             ->helperText('Leeg = standaard van het product'),
 
                         TextInput::make('sort_order')

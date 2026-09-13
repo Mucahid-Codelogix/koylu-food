@@ -53,7 +53,6 @@ class Settings extends Page
                             ->prefix('€')
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.01)
                             ->required(),
                     ]),
             ])

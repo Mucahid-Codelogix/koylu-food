@@ -14,7 +14,7 @@
         <input
             id="loaded-qty-{{ $orderItemId }}"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             wire:model.blur="loadingData.{{ $orderItemId }}.loaded_quantity"
             @class([

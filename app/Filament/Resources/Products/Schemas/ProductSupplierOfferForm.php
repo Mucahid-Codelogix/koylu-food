@@ -32,7 +32,6 @@ class ProductSupplierOfferForm
                             ->required()
                             ->numeric()
                             ->prefix('€')
-                            ->step(0.0001)
                             ->minValue(0),
 
                         TextInput::make('supplier_sku')

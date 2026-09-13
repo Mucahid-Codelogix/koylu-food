@@ -50,28 +50,24 @@ class OrderItemForm
                             ->label('Aantal')
                             ->required()
                             ->numeric()
-                            ->minValue(0.01)
-                            ->step(0.01),
+                            ->minValue(0.01),
 
                         TextInput::make('price_per_kg')
                             ->label('Prijs per kg')
                             ->numeric()
-                            ->prefix('€')
-                            ->step(0.0001),
+                            ->prefix('€'),
 
                         TextInput::make('unit_price')
                             ->label('Stukprijs')
                             ->required()
                             ->numeric()
-                            ->prefix('€')
-                            ->step(0.01),
+                            ->prefix('€'),
 
                         TextInput::make('subtotal')
                             ->label('Subtotaal')
                             ->required()
                             ->numeric()
                             ->prefix('€')
-                            ->step(0.01)
                             ->columnSpanFull(),
                     ]),
             ]);

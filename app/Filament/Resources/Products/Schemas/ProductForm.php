@@ -50,7 +50,6 @@ class ProductForm
                             ->numeric()
                             ->default(1)
                             ->minValue(0.01)
-                            ->step(0.01)
                             ->helperText('Geldt als er geen minimum per verpakking is ingesteld'),
 
                         Toggle::make('is_active')

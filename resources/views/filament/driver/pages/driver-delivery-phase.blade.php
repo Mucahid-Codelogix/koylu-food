@@ -114,7 +114,7 @@
                                     wire:model.live="deliveryData.{{ $orderItemId }}.delivered_quantity"
                                     @disabled($isHandled)
                                     min="0"
-                                    step="1"
+                                    step="any"
                                     class="mt-1 w-full p-2 rounded-xl border-gray-200 text-sm shadow-sm focus:border-primary-400 focus:ring-primary-400 disabled:bg-gray-50 disabled:text-gray-400 dark:bg-gray-900 dark:border-gray-700"
                                 />
                                 @if ($item['delivered_quantity'] != $item['ordered_quantity'])
@@ -216,7 +216,7 @@
                             <span class="text-sm text-gray-400">€</span>
                             <input
                                 type="number"
-                                step="0.01"
+                                step="any"
                                 min="0"
                                 wire:model="cashAmount"
                                 @disabled($isHandled)

@@ -126,3 +126,29 @@ it('vult bij afleveren het geladen aantal voor met een correctienotitie', functi
         ->and((float) $deliveryData['ordered_quantity'])->toBe(3.0)
         ->and($deliveryData['return_note'])->toContain('origineel 3, geladen 2');
 });
+
+it('laat de pijltjes bij het geladen aantal per hele verpakking verspringen', function () {
+    [$driver, $route, $item] = loadingRouteWithItem();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
+        ->assertSeeHtml('id="loaded-qty-'.$item->id.'"')
+        ->assertSeeHtml('step="any"')
+        ->assertDontSeeHtml('step="0.0');
+});
+
+it('accepteert nog steeds een handmatig getypt kommagetal als geladen aantal', function () {
+    [$driver, $route, $item] = loadingRouteWithItem();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    $component = Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id]);
+
+    $component->set("loadingData.{$item->id}.loaded_quantity", '2,5');
+    $component->call('finishLoading');
+
+    expect((float) $item->fresh()->loaded_packaging_quantity)->toBe(2.5);
+});

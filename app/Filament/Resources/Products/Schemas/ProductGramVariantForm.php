@@ -38,7 +38,6 @@ class ProductGramVariantForm
                             ->numeric()
                             ->suffix('kg')
                             ->minValue(0.001)
-                            ->step(0.001)
                             ->helperText('Totaalgewicht van één doos voor deze variant'),
 
                         TextInput::make('label')
