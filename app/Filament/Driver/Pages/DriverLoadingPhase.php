@@ -7,10 +7,12 @@ use App\Models\ProductGramVariant;
 use App\Models\Route;
 use App\Services\OrderItemLoadingService;
 use App\Services\RouteWorkflowService;
+use App\Services\WholeChickenBoxBreakdownService;
 use DomainException;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 
 class DriverLoadingPhase extends Page
@@ -18,6 +20,12 @@ class DriverLoadingPhase extends Page
     protected string $view = 'filament.driver.pages.driver-loading-phase';
 
     protected static ?string $title = 'Laden';
+
+    /** Geen paginakop: de chauffeur heeft elke pixel nodig voor de laadlijst. */
+    public function getHeading(): string|Htmlable|null
+    {
+        return null;
+    }
 
     protected static bool $shouldRegisterNavigation = false;
 
@@ -30,6 +38,13 @@ class DriverLoadingPhase extends Page
 
     /** @var array<int, array{loaded_gram_variant_id: int|null, substitution_reason: string, actual_weight_kg: string}> */
     public array $loadingData = [];
+
+    /**
+     * Openstaande doosverdelingen van hele kip, per orderregel.
+     *
+     * @var array<int, array<int, array{quantity: string, variant_id: int|null, weight_kg: string}>>
+     */
+    public array $boxBreakdowns = [];
 
     public function mount(): void
     {
@@ -60,12 +75,16 @@ class DriverLoadingPhase extends Page
 
     private function initLoadingData(): void
     {
+        $reasons = array_map(fn (array $data): string => (string) ($data['substitution_reason'] ?? ''), $this->loadingData);
+        $this->loadingData = [];
+
         foreach ($this->route->routeStops as $stop) {
             foreach ($stop->order->items as $item) {
                 $this->loadingData[$item->id] = [
                     'loaded_gram_variant_id' => $item->loaded_gram_variant_id
                         ?? $item->product_gram_variant_id,
-                    'substitution_reason' => $item->loading_substitution_reason ?? '',
+                    'substitution_reason' => $item->loading_substitution_reason
+                        ?? ($reasons[$item->id] ?? ''),
                     'actual_weight_kg' => $item->loaded_actual_weight_kg !== null
                         ? (string) $item->loaded_actual_weight_kg
                         : '',
@@ -118,6 +137,24 @@ class DriverLoadingPhase extends Page
                     'supplier_name' => $item->supplier_name,
                     'is_whole_chicken' => $item->isWholeChicken(),
                     'ordered_variant_label' => $item->productGramVariant?->displayLabel() ?? '—',
+                    'loaded_variant_label' => $item->effectiveGramVariantLabel(),
+                    'loaded_variant_id' => $item->loaded_gram_variant_id ?? $item->product_gram_variant_id,
+                    'is_substituted' => $item->loaded_gram_variant_id !== null
+                        && $item->loaded_gram_variant_id !== $item->product_gram_variant_id,
+                    'split_from' => $item->split_from_order_item_id,
+                    'is_checked' => $item->loading_checked_at !== null,
+                    'loaded_rows' => [[
+                        'label' => $item->effectiveGramVariantLabel(),
+                        'boxes' => $boxQty,
+                        'weight_kg' => $item->loaded_actual_weight_kg !== null
+                            ? (float) $item->loaded_actual_weight_kg
+                            : null,
+                        'is_substituted' => $item->loaded_gram_variant_id !== null
+                            && $item->loaded_gram_variant_id !== $item->product_gram_variant_id,
+                    ]],
+                    'actual_weight_kg' => $item->loaded_actual_weight_kg !== null
+                        ? (float) $item->loaded_actual_weight_kg
+                        : null,
                     'ordered_pieces' => $item->ordered_pieces,
                     'ordered_total_weight_kg' => $item->ordered_total_weight_kg,
                     'variant_weight_kg' => (float) ($item->loaded_total_weight_kg ?? $item->ordered_total_weight_kg),
@@ -139,12 +176,14 @@ class DriverLoadingPhase extends Page
                     $products[$productId]['total_kg'] += $effectiveKg;
                     $products[$productId]['total_pieces'] += $effectivePieces;
 
-                    $variantKey = $item->product_gram_variant_id ?? 0;
+                    // Wat er geladen moet worden is de geladen variant, niet de bestelde.
+                    $effectiveVariant = $item->loadedGramVariant ?? $item->productGramVariant;
+                    $variantKey = $effectiveVariant?->id ?? 0;
 
                     if (! isset($products[$productId]['variant_breakdown'][$variantKey])) {
                         $products[$productId]['variant_breakdown'][$variantKey] = [
-                            'label' => $item->productGramVariant?->displayLabel() ?? '—',
-                            'weight_grams' => (int) ($item->productGramVariant?->weight_grams ?? 0),
+                            'label' => $effectiveVariant?->displayLabel() ?? '—',
+                            'weight_grams' => (int) ($effectiveVariant?->weight_grams ?? 0),
                             'boxes' => 0,
                             'pieces' => 0,
                             'kg' => 0,
@@ -187,6 +226,16 @@ class DriverLoadingPhase extends Page
         }
 
         foreach ($products as &$product) {
+            $product['customers'] = $this->mergeSplitRows($product['customers']);
+            $product['has_mixed_suppliers'] = count($product['supplier_breakdown']) > 1;
+            $product['checked_count'] = count(array_filter(
+                $product['customers'],
+                fn (array $row): bool => $row['is_checked'],
+            ));
+            $product['single_supplier'] = count($product['supplier_breakdown']) === 1
+                ? array_key_first($product['supplier_breakdown'])
+                : null;
+
             usort($product['customers'], fn ($a, $b) => $a['stop_order'] <=> $b['stop_order']);
 
             if (! empty($product['variant_breakdown'])) {
@@ -217,9 +266,260 @@ class DriverLoadingPhase extends Page
         return $products;
     }
 
+    /**
+     * Gesplitste regels horen bij de bestelde regel waar ze uit komen en worden
+     * daar als geladen verdeling onder getoond.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function mergeSplitRows(array $rows): array
+    {
+        $indexById = [];
+
+        foreach ($rows as $index => $row) {
+            $indexById[$row['order_item_id']] = $index;
+        }
+
+        foreach ($rows as $index => $row) {
+            $parentId = $row['split_from'] ?? null;
+
+            if ($parentId === null || ! isset($indexById[$parentId])) {
+                continue;
+            }
+
+            $parentIndex = $indexById[$parentId];
+
+            $rows[$parentIndex]['quantity'] += $row['quantity'];
+            $rows[$parentIndex]['loaded_quantity'] += $row['loaded_quantity'];
+            $rows[$parentIndex]['ordered_pieces'] += $row['ordered_pieces'];
+            $rows[$parentIndex]['ordered_total_weight_kg'] += $row['ordered_total_weight_kg'];
+            $rows[$parentIndex]['loaded_rows'] = array_merge(
+                $rows[$parentIndex]['loaded_rows'],
+                $row['loaded_rows'],
+            );
+            $rows[$parentIndex]['is_checked'] = $rows[$parentIndex]['is_checked'] && $row['is_checked'];
+
+            unset($rows[$index]);
+        }
+
+        return array_values($rows);
+    }
+
     public function saveLoadedVariant(int $orderItemId): void
     {
         $this->persistLoadedVariant($orderItemId, notifyOnSuccess: true);
+    }
+
+    /**
+     * Klapt de regel uit naar één veld per bestelde doos.
+     */
+    public function openBoxBreakdown(int $orderItemId): void
+    {
+        $orderItem = OrderItem::query()
+            ->with(['product.activeGramVariants.productSuppliers', 'productGramVariant', 'loadedGramVariant'])
+            ->findOrFail($orderItemId);
+
+        if (! $orderItem->isWholeChicken()) {
+            return;
+        }
+
+        $splits = app(WholeChickenBoxBreakdownService::class)->splitsOf($orderItem);
+        $rows = [];
+
+        if ($splits->isNotEmpty()) {
+            // Al eerder verdeeld: toon de verdeling zoals die nu geladen is.
+            foreach (collect([$orderItem])->concat($splits) as $part) {
+                $rows[] = [
+                    'quantity' => $this->formatBoxes((float) ($part->loaded_packaging_quantity ?? $part->quantity)),
+                    'variant_id' => $part->loaded_gram_variant_id ?? $part->product_gram_variant_id,
+                    'weight_kg' => $part->loaded_actual_weight_kg !== null
+                        ? (string) (float) $part->loaded_actual_weight_kg
+                        : '',
+                ];
+            }
+        } else {
+            $variantId = $orderItem->loaded_gram_variant_id ?? $orderItem->product_gram_variant_id;
+            $boxes = max(1, (int) ceil((float) ($orderItem->loaded_packaging_quantity ?? $orderItem->quantity)));
+
+            for ($i = 0; $i < $boxes; $i++) {
+                $rows[] = [
+                    'quantity' => '1',
+                    'variant_id' => $variantId,
+                    'weight_kg' => '',
+                ];
+            }
+        }
+
+        $this->boxBreakdowns[$orderItemId] = $rows;
+    }
+
+    public function closeBoxBreakdown(int $orderItemId): void
+    {
+        unset($this->boxBreakdowns[$orderItemId]);
+    }
+
+    public function addBoxBreakdownRow(int $orderItemId): void
+    {
+        if (! isset($this->boxBreakdowns[$orderItemId])) {
+            return;
+        }
+
+        $last = end($this->boxBreakdowns[$orderItemId]);
+
+        $this->boxBreakdowns[$orderItemId][] = [
+            'quantity' => '1',
+            'variant_id' => $last['variant_id'] ?? null,
+            'weight_kg' => '',
+        ];
+    }
+
+    public function removeBoxBreakdownRow(int $orderItemId, int $index): void
+    {
+        if (! isset($this->boxBreakdowns[$orderItemId][$index])) {
+            return;
+        }
+
+        unset($this->boxBreakdowns[$orderItemId][$index]);
+
+        $this->boxBreakdowns[$orderItemId] = array_values($this->boxBreakdowns[$orderItemId]);
+
+        if ($this->boxBreakdowns[$orderItemId] === []) {
+            unset($this->boxBreakdowns[$orderItemId]);
+        }
+    }
+
+    /**
+     * Aantal bestelde dozen van de regel, inclusief eerder afgesplitste dozen.
+     */
+    public function orderedBoxes(int $orderItemId): float
+    {
+        foreach ($this->products as $product) {
+            foreach ($product['customers'] ?? [] as $row) {
+                if ($row['order_item_id'] === $orderItemId) {
+                    return (float) $row['quantity'];
+                }
+            }
+        }
+
+        return 0.0;
+    }
+
+    public function stepBoxBreakdownRow(int $orderItemId, int $index, int $step): void
+    {
+        if (! isset($this->boxBreakdowns[$orderItemId][$index])) {
+            return;
+        }
+
+        $current = $this->decimalInput($this->boxBreakdowns[$orderItemId][$index]['quantity'] ?? '') ?? 0;
+
+        $this->boxBreakdowns[$orderItemId][$index]['quantity'] = $this->formatBoxes(max(0, $current + $step));
+    }
+
+    /**
+     * Plus en min op het geladen aantal van een gewoon product, zodat de
+     * chauffeur niet hoeft te typen.
+     */
+    public function stepLoadedQuantity(int $orderItemId, int $step): void
+    {
+        $current = $this->decimalInput($this->loadingData[$orderItemId]['loaded_quantity'] ?? '') ?? 0;
+
+        $this->loadingData[$orderItemId]['loaded_quantity'] = $this->formatBoxes(max(0, $current + $step));
+    }
+
+    public function assignedBoxes(int $orderItemId): float
+    {
+        return collect($this->boxBreakdowns[$orderItemId] ?? [])
+            ->sum(fn (array $row): float => (float) ($this->decimalInput($row['quantity'] ?? '') ?? 0));
+    }
+
+    public function saveBoxBreakdown(int $orderItemId): void
+    {
+        if ($this->persistBoxBreakdown($orderItemId, notifyOnSuccess: true)) {
+            $this->closeBoxBreakdown($orderItemId);
+            $this->refreshRouteData();
+        }
+    }
+
+    /**
+     * Slaat de doosverdeling op en splitst de orderregel als er meerdere
+     * varianten geladen zijn. Geeft false terug zodra er iets niet klopt.
+     */
+    private function persistBoxBreakdown(int $orderItemId, bool $notifyOnSuccess): bool
+    {
+        $rows = $this->boxBreakdowns[$orderItemId] ?? null;
+
+        if ($rows === null) {
+            return true;
+        }
+
+        $orderItem = OrderItem::query()
+            ->with(['product.activeGramVariants.productSuppliers', 'productGramVariant'])
+            ->findOrFail($orderItemId);
+
+        if (! $orderItem->isWholeChicken()) {
+            return true;
+        }
+
+        $variants = $this->gramVariantsForOrderItem($orderItem);
+        $prepared = [];
+        $hasSubstitute = false;
+
+        foreach ($rows as $row) {
+            $quantity = $this->decimalInput($row['quantity'] ?? '') ?? 0;
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $variant = $variants->firstWhere('id', (int) ($row['variant_id'] ?? 0));
+
+            if (! $variant) {
+                Notification::make()->title('Kies bij elke doos een geldige gramvariant')->danger()->send();
+
+                return false;
+            }
+
+            if ($variant->id !== $orderItem->product_gram_variant_id) {
+                $hasSubstitute = true;
+            }
+
+            $prepared[] = [
+                'quantity' => $quantity,
+                'variant' => $variant,
+                'weight_kg' => $this->decimalInput($row['weight_kg'] ?? ''),
+            ];
+        }
+
+        if ($prepared === []) {
+            Notification::make()->title('Vul minstens één doos in')->warning()->send();
+
+            return false;
+        }
+
+        $reason = filled($this->loadingData[$orderItemId]['substitution_reason'] ?? null)
+            ? $this->loadingData[$orderItemId]['substitution_reason']
+            : null;
+
+        if ($hasSubstitute && ! $orderItem->product?->allows_loading_substitute) {
+            Notification::make()->title('Alternatieve variant niet toegestaan voor dit product')->warning()->send();
+
+            return false;
+        }
+
+        if ($hasSubstitute && blank($reason)) {
+            Notification::make()->title('Geef een reden op bij een alternatieve variant')->warning()->send();
+
+            return false;
+        }
+
+        app(WholeChickenBoxBreakdownService::class)->apply($orderItem, $prepared, $reason);
+
+        if ($notifyOnSuccess) {
+            Notification::make()->title('Laden opgeslagen')->success()->send();
+        }
+
+        return true;
     }
 
     /**
@@ -366,6 +666,34 @@ class DriverLoadingPhase extends Page
             : (string) $product['unit'];
     }
 
+    /**
+     * Regels van hele kip gebundeld per klant, zoals de chauffeur ze op de kar ziet.
+     *
+     * @param  array<string, mixed>  $product
+     * @return array<int, array{stop_order: int, customer_name: string, city: ?string, rows: array<int, array<string, mixed>>}>
+     */
+    public function customerGroups(array $product): array
+    {
+        $groups = [];
+
+        foreach ($product['customers'] ?? [] as $row) {
+            $key = $row['stop_order'].'-'.$row['customer_name'];
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'stop_order' => $row['stop_order'],
+                    'customer_name' => $row['customer_name'],
+                    'city' => $row['city'],
+                    'rows' => [],
+                ];
+            }
+
+            $groups[$key]['rows'][] = $row;
+        }
+
+        return array_values($groups);
+    }
+
     public function formatBoxes(float|int|string $boxes): string
     {
         return rtrim(rtrim(number_format((float) $boxes, 2, ',', ''), '0'), ',');
@@ -378,6 +706,16 @@ class DriverLoadingPhase extends Page
 
         foreach ($product['customers'] ?? [] as $row) {
             $itemId = $row['order_item_id'];
+
+            if (isset($this->boxBreakdowns[$itemId])) {
+                if (! $this->persistBoxBreakdown($itemId, notifyOnSuccess: false)) {
+                    return false;
+                }
+
+                $this->closeBoxBreakdown($itemId);
+
+                continue;
+            }
 
             if (! $this->persistChangedVariant($itemId)) {
                 return false;
@@ -424,7 +762,25 @@ class DriverLoadingPhase extends Page
             'routeStops.order.items.loadedGramVariant',
         ]);
 
+        $this->initLoadingData();
         $this->products = $this->groupByProduct();
+    }
+
+    /**
+     * Vinkt een regel af als geladen, inclusief de eventueel afgesplitste dozen.
+     */
+    public function toggleRowChecked(int $orderItemId): void
+    {
+        $orderItem = OrderItem::query()->findOrFail($orderItemId);
+        $checkedAt = $orderItem->loading_checked_at === null ? now() : null;
+
+        $orderItem->update(['loading_checked_at' => $checkedAt]);
+
+        OrderItem::query()
+            ->where('split_from_order_item_id', $orderItem->id)
+            ->update(['loading_checked_at' => $checkedAt]);
+
+        $this->refreshRouteData();
     }
 
     public function nextProduct(): void

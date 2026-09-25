@@ -116,10 +116,12 @@ it('factureert het ingevulde werkelijke gewicht na het laden en toont dat aan de
     Filament::setCurrentPanel('driver');
 
     Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
-        ->assertSee('Ingevuld gewicht wordt gefactureerd')
-        ->assertSee('24,70 kg volgens variant')
-        ->set("loadingData.{$item->id}.actual_weight_kg", '25,6')
-        ->call('finishLoading');
+        ->assertSeeInOrder(['2 dozen', '1200 g'])
+        ->call('openBoxBreakdown', $item->id)
+        ->set("boxBreakdowns.{$item->id}.0.weight_kg", '12.8')
+        ->set("boxBreakdowns.{$item->id}.1.weight_kg", '12.8')
+        ->call('saveBoxBreakdown', $item->id)
+        ->assertSeeInOrder(['Geladen:', '1200 g', 'gewogen 25,60 kg']);
 
     expect($item->fresh()->billableWeightKg(2))->toBe(25.6);
 });

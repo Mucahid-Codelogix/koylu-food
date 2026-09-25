@@ -5,401 +5,450 @@
         $current = $this->currentProductIndex + 1;
         $isLast  = $current === $total;
         $isFirst = $this->currentProductIndex === 0;
+        $isWholeChicken = $product['is_whole_chicken'] ?? false;
+        $customerCount = count($product['customers'] ?? []);
     @endphp
 
-    <div class="koylu-page">
-        <x-koylu.phase-progress
-            :current="$current"
-            :total="$total"
-            :label="'Product ' . $current . ' van ' . $total"
-            phase="Laadproces"
-        />
-
+    {{-- Onderin zit een vaste balk met de hoofdknop; de padding houdt de inhoud vrij. --}}
+    <div class="max-w-[1400px] space-y-3 pb-28 sm:pb-24">
         @if ($product)
-            <x-koylu.card>
-                <div class="koylu-card-hero">
-                    <div class="flex items-center gap-3">
-                        <div class="koylu-card-hero-icon">
-                            <x-heroicon-o-cube class="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <p class="koylu-card-hero-label">Huidig product</p>
-                            <p class="text-white text-lg font-bold">{{ $product['name'] }}</p>
-                            @if (($product['is_whole_chicken'] ?? false) && ! empty($product['variant_breakdown']))
-                                <p class="text-xs font-semibold text-white/90 mt-0.5">
-                                    @foreach ($product['variant_breakdown'] as $variant)
-                                        {{ $variant['label'] }}{{ $loop->last ? '' : ' · ' }}
-                                    @endforeach
-                                </p>
-                            @endif
-                            @if (! empty($product['supplier_breakdown']))
-                                <p class="text-[11px] text-white/70 mt-0.5">
-                                    @foreach ($product['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                        {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
-                                    @endforeach
-                                </p>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="koylu-card-hero-label">Totaal te laden</p>
-                        <p class="text-white text-2xl font-bold tabular-nums">
-                            {{ $this->formatBoxes($product['total']) }}
-                            <span class="text-sm font-normal">{{ $this->totalUnitLabel($product) }}</span>
-                        </p>
-                        @if ($product['is_whole_chicken'] ?? false)
-                            <p class="koylu-card-hero-label mt-0.5">
-                                {{ number_format($product['total_pieces'] ?? 0, 0, ',', '.') }} st
-                                · {{ number_format($product['total_kg'] ?? 0, 2, ',', '.') }} kg
-                            </p>
+            {{-- Smalle kopstrook: wat en hoeveel, in één regel --}}
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-xl bg-primary-600 px-3 py-2 text-white shadow-sm">
+                <div class="min-w-0">
+                    <p class="text-[11px] leading-none text-primary-100 truncate">
+                        Product {{ $current }}/{{ $total }}
+                        @if (! empty($product['single_supplier']))
+                            · {{ $product['single_supplier'] }}
                         @endif
-                    </div>
+                    </p>
+                    <p class="mt-0.5 truncate text-base font-bold leading-tight">{{ $product['name'] }}</p>
                 </div>
+                <div class="shrink-0 text-right leading-tight">
+                    <p class="text-2xl font-extrabold tabular-nums leading-none">
+                        {{ $this->formatBoxes($product['total']) }}
+                        <span class="text-[11px] font-medium">{{ $this->totalUnitLabel($product) }}</span>
+                    </p>
+                    @if ($isWholeChicken)
+                        <p class="text-[11px] text-primary-100 tabular-nums">
+                            {{ number_format($product['total_pieces'] ?? 0, 0, ',', '.') }} st
+                            · {{ number_format($product['total_kg'] ?? 0, 2, ',', '.') }} kg
+                        </p>
+                    @endif
+                </div>
+            </div>
 
-                @if (($product['is_whole_chicken'] ?? false) && ! empty($product['variant_breakdown']))
-                    <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Per gramvariant laden</p>
-                        <div class="space-y-1.5">
-                            @foreach ($product['variant_breakdown'] as $variant)
-                                <div class="flex items-start justify-between gap-3 text-sm">
-                                    <span class="text-gray-800 dark:text-gray-100">
-                                        <span class="font-semibold">{{ $variant['label'] }}</span>
-                                        @if (! empty($variant['supplier_breakdown']))
-                                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">
-                                                @foreach ($variant['supplier_breakdown'] as $supplierName => $supplierBoxes)
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
+
+                {{-- Wat er in de auto moet --}}
+                @php
+                    $loadRows = $isWholeChicken
+                        ? ($product['variant_breakdown'] ?? [])
+                        : ($product['packaging_breakdown'] ?? []);
+                @endphp
+
+                @if (count($loadRows) > ($isWholeChicken ? 0 : 1))
+                    <x-koylu.card class="lg:col-span-2 lg:sticky lg:top-16">
+                        <p class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                            {{ $isWholeChicken ? 'Per gramvariant laden' : 'Per verpakking laden' }}
+                        </p>
+
+                        <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach ($loadRows as $loadRow)
+                                <div class="flex items-center justify-between gap-3 px-3 py-2">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ $loadRow['label'] }}</p>
+                                        @if (($product['has_mixed_suppliers'] ?? false) && ! empty($loadRow['supplier_breakdown']))
+                                            <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                                @foreach ($loadRow['supplier_breakdown'] as $supplierName => $supplierBoxes)
                                                     {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
                                                 @endforeach
-                                            </span>
-                                        @endif
-                                    </span>
-                                    <span class="tabular-nums text-gray-600 dark:text-gray-300 text-right shrink-0">
-                                        <span class="text-base font-extrabold text-gray-900 dark:text-white">{{ $variant['boxes'] }}</span> doos
-                                        · {{ number_format($variant['pieces'], 0, ',', '.') }} st
-                                        · {{ number_format($variant['kg'], 2, ',', '.') }} kg
-                                    </span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @elseif (count($product['packaging_breakdown'] ?? []) > 1)
-                    <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Per verpakking laden</p>
-                        <div class="space-y-1.5">
-                            @foreach ($product['packaging_breakdown'] as $packaging)
-                                <div class="flex items-start justify-between gap-3 text-sm">
-                                    <span class="text-gray-800 dark:text-gray-100">
-                                        <span class="font-semibold">{{ $packaging['label'] }}</span>
-                                        @if (! empty($packaging['supplier_breakdown']))
-                                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">
-                                                @foreach ($packaging['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                                    {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
-                                                @endforeach
-                                            </span>
-                                        @endif
-                                    </span>
-                                    <span class="tabular-nums text-gray-600 dark:text-gray-300 text-right shrink-0">
-                                        <span class="text-base font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($packaging['quantity']) }}x</span>
-                                        à {{ $this->formatBoxes($packaging['box_weight_kg']) }} kg
-                                        · <span class="font-semibold text-gray-900 dark:text-white">totaal {{ number_format($packaging['kg'], 2, ',', '.') }} kg</span>
-                                    </span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <div class="overflow-x-auto">
-                    <table class="koylu-table">
-                        <thead>
-                            <tr>
-                                <th class="w-8">#</th>
-                                <th>Klant</th>
-                                <th class="hidden sm:table-cell">Stad</th>
-                                <th class="text-right">Aantal / Gewicht</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($product['customers'] as $row)
-                                <tr class="align-top">
-                                    <td>
-                                        <span class="koylu-stop-dot-pending w-6 h-6 text-[10px]">
-                                            {{ $row['stop_order'] }}
-                                        </span>
-                                    </td>
-                                    <td colspan="{{ ($product['is_whole_chicken'] ?? false) ? 2 : 1 }}" class="align-top">
-                                        <p class="font-medium text-gray-800 dark:text-white">{{ $row['customer_name'] }}</p>
-                                        <p class="text-xs text-gray-400">{{ $row['city'] }}</p>
-                                        @if (filled($row['supplier_name'] ?? null))
-                                            <p class="text-xs text-gray-400">
-                                                Leverancier: <span class="font-medium text-gray-600 dark:text-gray-300">{{ $row['supplier_name'] }}</span>
                                             </p>
                                         @endif
+                                    </div>
+                                    <p class="shrink-0 text-right tabular-nums leading-tight">
+                                        <span class="text-xl font-extrabold text-gray-900 dark:text-white">
+                                            {{ $isWholeChicken ? $this->formatBoxes($loadRow['boxes']) : $this->formatBoxes($loadRow['quantity']).'x' }}
+                                        </span>
+                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">
+                                            @if ($isWholeChicken)
+                                                doos · {{ number_format($loadRow['pieces'], 0, ',', '.') }} st · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg
+                                            @else
+                                                à {{ $this->formatBoxes($loadRow['box_weight_kg']) }} kg · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg totaal
+                                            @endif
+                                        </span>
+                                    </p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </x-koylu.card>
+                @endif
 
-                                        @if ($row['is_whole_chicken'] ?? false)
-                                            <div class="mt-3 space-y-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60">
-                                                @if (($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false))
-                                                    <p class="text-xs text-gray-500">
-                                                        Besteld: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $row['ordered_variant_label'] }}</span>
-                                                        · {{ $row['quantity'] }} doos
-                                                    </p>
-                                                @endif
+                {{-- Per klant: alleen nodig bij een correctie, dus op mobiel dichtgeklapt --}}
+                <x-koylu.card @class([
+                    'lg:col-span-3' => count($loadRows) > ($isWholeChicken ? 0 : 1),
+                    'lg:col-span-5' => count($loadRows) <= ($isWholeChicken ? 0 : 1),
+                ])>
+                    <div class="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                        <span class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                            <x-heroicon-o-users class="w-3.5 h-3.5 text-gray-400" />
+                            Per klant
+                        </span>
+                        <span @class([
+                            'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+                            'bg-success-100 text-success-700 dark:bg-success-500/10 dark:text-success-400' => ($product['checked_count'] ?? 0) === $customerCount && $customerCount > 0,
+                            'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' => ($product['checked_count'] ?? 0) !== $customerCount,
+                        ])>
+                            {{ $product['checked_count'] ?? 0 }}/{{ $customerCount }} geladen
+                        </span>
+                    </div>
 
-                                                <div>
-                                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Geladen aantal dozen</label>
-                                                    <x-koylu.loaded-quantity-input
-                                                        :order-item-id="$row['order_item_id']"
-                                                        :ordered-quantity="$row['quantity']"
-                                                        :is-corrected="$this->isQuantityCorrected($row['order_item_id'], $row['quantity'])"
-                                                        class="mt-1 [&_label]:hidden [&_input]:w-full [&_input]:text-left [&>div]:justify-start"
-                                                    />
+                    <div>
+                        @if ($isWholeChicken)
+                            <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                                @foreach ($this->customerGroups($product) as $group)
+                                    <div class="px-3 py-3 sm:px-4">
+                                        <div class="flex items-center gap-2 mb-1.5">
+                                            <span class="koylu-stop-dot-pending w-6 h-6 text-[10px] shrink-0">{{ $group['stop_order'] }}</span>
+                                            <p class="font-semibold text-gray-800 dark:text-white truncate">{{ $group['customer_name'] }}</p>
+                                            @if (filled($group['city']))
+                                                <span class="text-xs text-gray-400 truncate">{{ $group['city'] }}</span>
+                                            @endif
+                                        </div>
+
+                                        <div class="rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
+                                            @foreach ($group['rows'] as $row)
+                                                @php
+                                                    $itemId = $row['order_item_id'];
+                                                    $isOpen = isset($this->boxBreakdowns[$itemId]);
+                                                    $assigned = $isOpen ? $this->assignedBoxes($itemId) : 0;
+                                                    $ordered = (float) $row['quantity'];
+                                                    $canSubstitute = ($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false);
+                                                    $loadedRows = $row['loaded_rows'] ?? [];
+                                                    $isChanged = collect($loadedRows)->contains(
+                                                        fn (array $loaded): bool => $loaded['is_substituted'] || ! is_null($loaded['weight_kg'])
+                                                    ) || count($loadedRows) > 1;
+                                                @endphp
+
+                                                <div @class(['p-2.5 transition', 'bg-success-50/60 dark:bg-success-500/5' => $row['is_checked']])>
+                                                    <div class="flex items-center justify-between gap-3">
+                                                        <button
+                                                            type="button"
+                                                            wire:click="toggleRowChecked({{ $itemId }})"
+                                                            @class([
+                                                                'shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center transition',
+                                                                'border-success-500 bg-success-500 text-white' => $row['is_checked'],
+                                                                'border-gray-300 dark:border-gray-600 text-gray-300 dark:text-gray-600' => ! $row['is_checked'],
+                                                            ])
+                                                            aria-label="{{ $row['is_checked'] ? 'Markeer als niet geladen' : 'Markeer als geladen' }}"
+                                                        >
+                                                            <x-heroicon-o-check class="w-6 h-6" />
+                                                        </button>
+
+                                                        <div class="min-w-0 flex-1">
+                                                            <p @class([
+                                                                'text-base font-bold tabular-nums',
+                                                                'text-gray-400 dark:text-gray-500 line-through decoration-1' => $row['is_checked'],
+                                                                'text-gray-900 dark:text-white' => ! $row['is_checked'],
+                                                            ])>
+                                                                {{ $this->formatBoxes($ordered) }} {{ $ordered === 1.0 ? 'doos' : 'dozen' }}
+                                                                · {{ $row['ordered_variant_label'] }}
+                                                            </p>
+                                                            <p class="text-xs text-gray-400">
+                                                                {{ number_format($row['ordered_total_weight_kg'] ?? 0, 2, ',', '.') }} kg volgens variant
+                                                                @if (($product['has_mixed_suppliers'] ?? false) && filled($row['supplier_name'] ?? null))
+                                                                    · {{ $row['supplier_name'] }}
+                                                                @endif
+                                                            </p>
+
+                                                            @if ($isChanged)
+                                                                <div class="mt-1.5 space-y-0.5">
+                                                                    @foreach ($loadedRows as $loaded)
+                                                                        <p class="text-xs font-medium text-amber-700 dark:text-amber-500 tabular-nums">
+                                                                            Geladen: {{ $this->formatBoxes($loaded['boxes']) }}x {{ $loaded['label'] }}
+                                                                            @if (! is_null($loaded['weight_kg']))
+                                                                                · gewogen {{ number_format($loaded['weight_kg'], 2, ',', '.') }} kg
+                                                                            @endif
+                                                                        </p>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
+                                                        @if ($isOpen)
+                                                            <button type="button" wire:click="closeBoxBreakdown({{ $itemId }})" class="koylu-btn-secondary !w-auto shrink-0 !px-4 !py-2.5 text-xs">
+                                                                Annuleren
+                                                            </button>
+                                                        @else
+                                                            <button type="button" wire:click="openBoxBreakdown({{ $itemId }})" class="koylu-btn-secondary !w-auto shrink-0 !px-4 !py-2.5 text-xs">
+                                                                Wijzigen
+                                                            </button>
+                                                        @endif
+                                                    </div>
+
+                                                    @if ($isOpen)
+                                                        <div class="mt-3 space-y-2">
+                                                            @foreach ($this->boxBreakdowns[$itemId] as $index => $boxRow)
+                                                                <div class="flex items-center gap-2">
+                                                                    <div class="flex items-center rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden shrink-0">
+                                                                        <button
+                                                                            type="button"
+                                                                            wire:click="stepBoxBreakdownRow({{ $itemId }}, {{ $index }}, -1)"
+                                                                            class="px-2.5 py-2.5 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                                            aria-label="Eén doos minder"
+                                                                        >
+                                                                            <x-heroicon-o-minus class="w-4 h-4" />
+                                                                        </button>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            step="1"
+                                                                            inputmode="numeric"
+                                                                            wire:model.live="boxBreakdowns.{{ $itemId }}.{{ $index }}.quantity"
+                                                                            aria-label="Aantal dozen"
+                                                                            class="w-12 text-center text-base font-semibold border-0 border-x border-gray-200 dark:border-gray-600 px-1 py-2.5 dark:bg-gray-900 focus:ring-0 focus:outline-none"
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            wire:click="stepBoxBreakdownRow({{ $itemId }}, {{ $index }}, 1)"
+                                                                            class="px-2.5 py-2.5 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                                            aria-label="Eén doos meer"
+                                                                        >
+                                                                            <x-heroicon-o-plus class="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <select
+                                                                        wire:model="boxBreakdowns.{{ $itemId }}.{{ $index }}.variant_id"
+                                                                        @disabled(! $canSubstitute)
+                                                                        aria-label="Gramvariant"
+                                                                        class="flex-1 min-w-0 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 dark:bg-gray-900 disabled:opacity-60"
+                                                                    >
+                                                                        @foreach ($row['gram_variants'] as $variant)
+                                                                            <option value="{{ $variant->id }}">{{ $variant->displayLabel() }}</option>
+                                                                        @endforeach
+                                                                    </select>
+
+                                                                    <input
+                                                                        type="number"
+                                                                        step="any"
+                                                                        min="0"
+                                                                        inputmode="decimal"
+                                                                        wire:model="boxBreakdowns.{{ $itemId }}.{{ $index }}.weight_kg"
+                                                                        placeholder="kg"
+                                                                        aria-label="Gewogen kilo"
+                                                                        class="w-20 shrink-0 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 dark:bg-gray-900"
+                                                                    />
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="removeBoxBreakdownRow({{ $itemId }}, {{ $index }})"
+                                                                        class="shrink-0 p-2.5 text-gray-400 hover:text-danger-600"
+                                                                        aria-label="Regel verwijderen"
+                                                                    >
+                                                                        <x-heroicon-o-trash class="w-5 h-5" />
+                                                                    </button>
+                                                                </div>
+                                                            @endforeach
+
+                                                            @php $isComplete = abs($assigned - $ordered) < 0.001; @endphp
+                                                            <div @class([
+                                                                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium',
+                                                                'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400' => $isComplete,
+                                                                'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400' => ! $isComplete,
+                                                            ])>
+                                                                @if ($isComplete)
+                                                                    <x-heroicon-o-check class="w-4 h-4 shrink-0" />
+                                                                @else
+                                                                    <x-heroicon-o-exclamation-triangle class="w-4 h-4 shrink-0" />
+                                                                @endif
+                                                                {{ $this->formatBoxes($assigned) }} van {{ $this->formatBoxes($ordered) }} dozen toegewezen
+                                                            </div>
+
+                                                            @if ($canSubstitute)
+                                                                <input
+                                                                    type="text"
+                                                                    wire:model="loadingData.{{ $itemId }}.substitution_reason"
+                                                                    placeholder="Reden bij een andere variant, bv. niet op voorraad"
+                                                                    class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 dark:bg-gray-900"
+                                                                />
+                                                            @endif
+
+                                                            <div class="flex items-center gap-2">
+                                                                <button type="button" wire:click="addBoxBreakdownRow({{ $itemId }})" class="koylu-btn-secondary !w-auto !px-4 !py-2.5 text-xs">
+                                                                    <x-heroicon-o-plus class="w-4 h-4" />
+                                                                    Regel
+                                                                </button>
+                                                                <button type="button" wire:click="saveBoxBreakdown({{ $itemId }})" class="koylu-btn-primary !w-auto !px-4 !py-2.5 text-xs">
+                                                                    Opslaan
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                                @foreach ($product['customers'] as $row)
+                                    <div @class([
+                                        'px-3 py-3 sm:px-4 transition',
+                                        'bg-success-50/60 dark:bg-success-500/5' => $row['is_checked'],
+                                    ])>
+                                        <div class="flex items-start justify-between gap-3">
+                                            <button
+                                                type="button"
+                                                wire:click="toggleRowChecked({{ $row['order_item_id'] }})"
+                                                @class([
+                                                    'shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center transition',
+                                                    'border-success-500 bg-success-500 text-white' => $row['is_checked'],
+                                                    'border-gray-300 dark:border-gray-600 text-gray-300 dark:text-gray-600' => ! $row['is_checked'],
+                                                ])
+                                                aria-label="{{ $row['is_checked'] ? 'Markeer als niet geladen' : 'Markeer als geladen' }}"
+                                            >
+                                                <x-heroicon-o-check class="w-6 h-6" />
+                                            </button>
 
-                                                <div class="mt-2">
-                                            <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Werkelijk totaalgewicht</label>
-                                            <p class="text-[11px] text-gray-400">Leeg = {{ number_format($row['variant_weight_kg'] ?? 0, 2, ',', '.') }} kg volgens variant. Ingevuld gewicht wordt gefactureerd.</p>
-                                            <div class="mt-1 flex items-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    min="0"
-                                                    wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
-                                                    placeholder="{{ number_format($row['variant_weight_kg'] ?? 0, 3, '.', '') }}"
-                                                    class="w-28 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                                                />
-                                                <span class="text-xs text-gray-400">kg</span>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="koylu-stop-dot-pending w-6 h-6 text-[10px] shrink-0">{{ $row['stop_order'] }}</span>
+                                                    <p @class([
+                                                        'font-semibold truncate',
+                                                        'text-gray-400 dark:text-gray-500' => $row['is_checked'],
+                                                        'text-gray-800 dark:text-white' => ! $row['is_checked'],
+                                                    ])>{{ $row['customer_name'] }}</p>
+                                                </div>
+                                                <p class="mt-1 text-xs text-gray-400">
+                                                    {{ $row['city'] }}
+                                                    @if (($product['has_mixed_suppliers'] ?? false) && filled($row['supplier_name'] ?? null))
+                                                        · {{ $row['supplier_name'] }}
+                                                    @endif
+                                                </p>
+                                            </div>
+                                            <div class="text-right shrink-0 tabular-nums">
+                                                <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($row['quantity']) }}</span>
+                                                <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $row['unit'] }}</span>
                                             </div>
                                         </div>
 
-                                        @if (($row['allows_substitute'] ?? false) || ($product['allows_substitute'] ?? false))
-                                                    <div>
-                                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Geladen variant</label>
-                                                        <select
-                                                            wire:model="loadingData.{{ $row['order_item_id'] }}.loaded_gram_variant_id"
-                                                            class="mt-1 w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 dark:bg-gray-900"
-                                                        >
-                                                            @foreach ($row['gram_variants'] as $variant)
-                                                                <option value="{{ $variant->id }}">{{ $variant->boxDescription() }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-
-                                                    <div>
-                                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Reden bij alternatief (indien van toepassing)</label>
-                                                        <input
-                                                            type="text"
-                                                            wire:model="loadingData.{{ $row['order_item_id'] }}.substitution_reason"
-                                                            placeholder="Bv. niet op voorraad"
-                                                            class="mt-1 w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 dark:bg-gray-900"
-                                                        />
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        wire:click="saveLoadedVariant({{ $row['order_item_id'] }})"
-                                                        class="koylu-link"
-                                                    >
-                                                        Variant opslaan
-                                                    </button>
-                                                @else
-                                                    <p class="text-xs text-gray-600 dark:text-gray-300">
-                                                        Geladen zoals besteld: <span class="font-semibold">{{ $row['ordered_variant_label'] }}</span>
-                                                    </p>
-                                                @endif
-                                            </div>
-                                        @endif
-                                    </td>
-                                    @if ($product['is_whole_chicken'] ?? false)
-                                        <td class="text-right tabular-nums align-top">
-                                            <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $row['quantity'] }}</span>
-                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">doos</span>
-                                            <p class="mt-0.5 text-sm font-bold text-primary-600 dark:text-primary-400">
-                                                {{ $row['ordered_variant_label'] }}
-                                            </p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                {{ number_format($row['ordered_pieces'] ?? 0, 0, ',', '.') }} st
-                                                · {{ number_format($row['ordered_total_weight_kg'] ?? 0, 2, ',', '.') }} kg
-                                            </p>
-                                        </td>
-                                    @else
-                                        <td class="text-gray-500 hidden sm:table-cell">{{ $row['city'] }}</td>
-                                        <td class="text-right tabular-nums align-top">
-                                            <span class="text-xl font-extrabold text-gray-900 dark:text-white">{{ $this->formatBoxes($row['quantity']) }}</span>
-                                            <span class="text-sm font-bold text-gray-600 dark:text-gray-300 ml-0.5">{{ $row['unit'] }}</span>
-
+                                        <div class="mt-2 flex flex-wrap items-end justify-end gap-3">
                                             <x-koylu.loaded-quantity-input
                                                 :order-item-id="$row['order_item_id']"
                                                 :ordered-quantity="$row['quantity']"
                                                 :is-corrected="$this->isQuantityCorrected($row['order_item_id'], $row['quantity'])"
                                             />
 
-                                            <div class="mt-2 flex items-center justify-end gap-1">
+                                            <div class="flex items-center gap-1">
                                                 <input
                                                     type="number"
                                                     step="any"
                                                     min="0"
+                                                    inputmode="decimal"
                                                     wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
                                                     placeholder="0.000"
-                                                    class="w-24 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                                    aria-label="Werkelijk gewicht"
+                                                    class="w-24 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                                                 />
                                                 <span class="text-xs text-gray-400 shrink-0">kg</span>
                                             </div>
-                                        </td>
-                                    @endif
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot>
-                            <tr class="bg-gray-50 dark:bg-gray-800/50">
-                                <td colspan="3" class="text-xs font-semibold text-gray-500 text-right uppercase tracking-wide">Totaal</td>
-                                <td class="text-right tabular-nums">
-                                    <span class="text-xl font-extrabold text-primary-600">{{ $product['total'] }}</span>
-                                    <span class="text-sm font-bold text-primary-500 ml-0.5">
-                                        {{ $this->totalUnitLabel($product) }}
-                                    </span>
-                                    @if ($product['is_whole_chicken'] ?? false)
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ number_format($product['total_pieces'] ?? 0, 0, ',', '.') }} st
-                                            · {{ number_format($product['total_kg'] ?? 0, 2, ',', '.') }} kg
-                                        </p>
-                                    @endif
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </x-koylu.card>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </x-koylu.card>
+            </div>
 
-            <x-koylu.card>
+            <div class="flex flex-wrap items-center gap-2">
                 <a
                     href="{{ route('leverbon.route', $this->route) }}"
                     target="_blank"
-                    class="w-full flex items-center justify-between px-5 py-4"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-printer class="w-4 h-4 text-gray-400" />
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                            Leverbonnen printen ({{ $this->route->routeStops->count() }} stops)
-                        </span>
-                    </div>
-                    <x-heroicon-o-arrow-down-tray class="w-4 h-4 text-gray-400" />
+                    <x-heroicon-o-printer class="w-4 h-4 text-gray-400" />
+                    Leverbonnen ({{ $this->route->routeStops->count() }})
                 </a>
-            </x-koylu.card>
 
-            <div class="grid grid-cols-2 gap-3">
-                <button wire:click="previousProduct" @disabled($isFirst) class="koylu-btn-secondary w-full">
-                    <x-heroicon-o-arrow-left class="w-4 h-4" />
-                    Vorige
+                <button
+                    type="button"
+                    onclick="document.getElementById('koylu-all-products').classList.toggle('hidden')"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                    <x-heroicon-o-list-bullet class="w-4 h-4 text-gray-400" />
+                    Alle producten ({{ $total }})
                 </button>
-
-                @if ($isLast)
-                    <button wire:click="finishLoading" class="koylu-btn-success !w-auto col-span-1">
-                        <x-heroicon-o-check-circle class="w-4 h-4" />
-                        Klaar met laden
-                    </button>
-                @else
-                    <button wire:click="nextProduct" class="koylu-btn-primary !w-auto">
-                        Voltooid
-                        <x-heroicon-o-arrow-right class="w-4 h-4" />
-                    </button>
-                @endif
             </div>
 
-            <x-koylu.card>
-                <button
-                    onclick="this.nextElementSibling.classList.toggle('hidden')"
-                    class="w-full flex items-center justify-between px-5 py-4"
-                >
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-list-bullet class="w-4 h-4 text-gray-400" />
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Alle producten</span>
-                    </div>
-                    <x-heroicon-o-chevron-down class="w-4 h-4 text-gray-400" />
-                </button>
-
-                <div class="hidden divide-y divide-gray-50 dark:divide-gray-800/80 border-t border-gray-100 dark:border-gray-800">
+            <x-koylu.card id="koylu-all-products" class="hidden">
+                <div class="divide-y divide-gray-50 dark:divide-gray-800/80">
                     @foreach ($products as $index => $p)
-                        <div>
-                            <button
-                                wire:click="$set('currentProductIndex', {{ $index }})"
-                                @class([
-                                    'w-full flex items-center justify-between px-5 py-3 text-sm transition',
-                                    'bg-primary-50 dark:bg-primary-900/20' => $index === $this->currentProductIndex,
-                                    'hover:bg-gray-50 dark:hover:bg-gray-800' => $index !== $this->currentProductIndex,
-                                ])
-                            >
-                                <div class="flex items-center gap-3">
-                                    <span @class([
-                                        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                                        'bg-primary-500 text-white' => $index === $this->currentProductIndex,
-                                        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' => $index !== $this->currentProductIndex,
-                                    ])>
-                                        {{ $index + 1 }}
-                                    </span>
-                                    <span @class([
-                                        'font-medium',
-                                        'text-primary-700 dark:text-primary-400' => $index === $this->currentProductIndex,
-                                        'text-gray-700 dark:text-gray-300' => $index !== $this->currentProductIndex,
-                                    ])>
-                                        {{ $p['name'] }}
-                                    </span>
-                                </div>
-                                <span class="text-gray-700 dark:text-gray-200 text-base font-bold shrink-0 tabular-nums">
-                                    {{ $this->formatBoxes($p['total']) }} {{ $this->totalUnitLabel($p) }}
+                        <button
+                            wire:click="$set('currentProductIndex', {{ $index }})"
+                            @class([
+                                'w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm transition',
+                                'bg-primary-50 dark:bg-primary-900/20' => $index === $this->currentProductIndex,
+                                'hover:bg-gray-50 dark:hover:bg-gray-800' => $index !== $this->currentProductIndex,
+                            ])
+                        >
+                            <span class="flex items-center gap-3 min-w-0">
+                                <span @class([
+                                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                                    'bg-primary-500 text-white' => $index === $this->currentProductIndex,
+                                    'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' => $index !== $this->currentProductIndex,
+                                ])>
+                                    {{ $index + 1 }}
                                 </span>
-                            </button>
-
-                            @if (($p['is_whole_chicken'] ?? false) && ! empty($p['variant_breakdown']))
-                                <div class="px-5 pb-3 space-y-2">
-                                    @foreach ($p['variant_breakdown'] as $variant)
-                                        <div class="pl-9">
-                                            <div class="flex items-center justify-between gap-3 text-xs">
-                                                <span class="font-semibold text-gray-800 dark:text-gray-100">{{ $variant['label'] }}</span>
-                                                <span class="tabular-nums text-gray-500 dark:text-gray-400 shrink-0">
-                                                    {{ $variant['boxes'] }} doos · {{ number_format($variant['kg'], 2, ',', '.') }} kg
-                                                </span>
-                                            </div>
-                                            @foreach ($variant['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                                <div class="flex items-center justify-between gap-3 pl-3 text-xs text-gray-500 dark:text-gray-400">
-                                                    <span>{{ $supplierName }}</span>
-                                                    <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @elseif (count($p['packaging_breakdown'] ?? []) > 1)
-                                <div class="px-5 pb-3 space-y-2">
-                                    @foreach ($p['packaging_breakdown'] as $packaging)
-                                        <div class="pl-9">
-                                            <div class="flex items-center justify-between gap-3 text-xs">
-                                                <span class="font-semibold text-gray-800 dark:text-gray-100">{{ $packaging['label'] }}</span>
-                                                <span class="tabular-nums text-gray-500 dark:text-gray-400 shrink-0">
-                                                    {{ $this->formatBoxes($packaging['quantity']) }}x à {{ $this->formatBoxes($packaging['box_weight_kg']) }} kg · {{ number_format($packaging['kg'], 2, ',', '.') }} kg totaal
-                                                </span>
-                                            </div>
-                                            @foreach ($packaging['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                                <div class="flex items-center justify-between gap-3 pl-3 text-xs text-gray-500 dark:text-gray-400">
-                                                    <span>{{ $supplierName }}</span>
-                                                    <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @elseif (! empty($p['supplier_breakdown']))
-                                <div class="px-5 pb-3 space-y-0.5">
-                                    @foreach ($p['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                        <div class="flex items-center justify-between gap-3 pl-9 text-xs text-gray-500 dark:text-gray-400">
-                                            <span>{{ $supplierName }}</span>
-                                            <span class="tabular-nums font-semibold text-gray-700 dark:text-gray-300 shrink-0">{{ $this->formatBoxes($supplierBoxes) }}x</span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
+                                <span @class([
+                                    'font-medium truncate',
+                                    'text-primary-700 dark:text-primary-400' => $index === $this->currentProductIndex,
+                                    'text-gray-700 dark:text-gray-300' => $index !== $this->currentProductIndex,
+                                ])>
+                                    {{ $p['name'] }}
+                                </span>
+                            </span>
+                            <span class="text-gray-700 dark:text-gray-200 text-sm font-bold shrink-0 tabular-nums">
+                                {{ $this->formatBoxes($p['total']) }} {{ $this->totalUnitLabel($p) }}
+                            </span>
+                        </button>
                     @endforeach
                 </div>
             </x-koylu.card>
+
+            {{-- Vaste balk: voortgang links, hoofdknop rechts onder de duim --}}
+            <div class="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+                <div class="mx-auto max-w-7xl flex items-center gap-2 px-3 py-2">
+                    <button
+                        wire:click="previousProduct"
+                        @disabled($isFirst)
+                        class="koylu-btn-secondary !w-auto shrink-0 !px-3.5 !py-2.5 disabled:opacity-40"
+                        aria-label="Vorige product"
+                    >
+                        <x-heroicon-o-arrow-left class="w-5 h-5" />
+                    </button>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                            <div class="h-full rounded-full bg-primary-500 transition-all" style="width: {{ $total > 0 ? round($current / $total * 100) : 0 }}%"></div>
+                        </div>
+                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">{{ $current }} / {{ $total }}</p>
+                    </div>
+
+                    @if ($isLast)
+                        <button wire:click="finishLoading" class="koylu-btn-success !w-auto shrink-0 !px-4 !py-2.5">
+                            <x-heroicon-o-check-circle class="w-5 h-5" />
+                            Klaar
+                        </button>
+                    @else
+                        <button wire:click="nextProduct" class="koylu-btn-primary !w-auto shrink-0 !px-4 !py-2.5">
+                            Voltooid
+                            <x-heroicon-o-arrow-right class="w-5 h-5" />
+                        </button>
+                    @endif
+                </div>
+            </div>
         @endif
     </div>
 </x-filament-panels::page>

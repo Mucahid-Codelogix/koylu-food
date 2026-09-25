@@ -147,6 +147,5 @@ it('toont per klantregel de eigen verpakking en splitst een product met meerdere
         ->assertSee('3 verpakkingen')
         ->assertDontSee('3 Krat 1400 g')
         // Aantal, gewicht per verpakking en totaal zijn los leesbaar.
-        ->assertSee('2x à 14 kg · 28,00 kg totaal')
-        ->assertSee('totaal 28,00 kg');
+        ->assertSeeInOrder(['2x', 'à 14 kg', '28,00 kg totaal']);
 });

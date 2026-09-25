@@ -152,3 +152,17 @@ it('accepteert nog steeds een handmatig getypt kommagetal als geladen aantal', f
 
     expect((float) $item->fresh()->loaded_packaging_quantity)->toBe(2.5);
 });
+
+it('past het geladen aantal aan met de plus- en minknop', function () {
+    [$driver, $route, $item] = loadingRouteWithItem();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
+        ->call('stepLoadedQuantity', $item->id, -1)
+        ->assertSet("loadingData.{$item->id}.loaded_quantity", '2')
+        ->call('finishLoading');
+
+    expect((float) $item->fresh()->loaded_packaging_quantity)->toBe(2.0);
+});

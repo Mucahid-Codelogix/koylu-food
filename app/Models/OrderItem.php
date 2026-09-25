@@ -38,6 +38,7 @@ class OrderItem extends Model
             'loaded_total_weight_kg' => 'decimal:3',
             'loaded_pieces' => 'decimal:2',
             'loaded_at' => 'datetime',
+            'loading_checked_at' => 'datetime',
         ];
     }
 
