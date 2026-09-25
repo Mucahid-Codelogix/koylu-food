@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
@@ -93,6 +94,70 @@ new class extends Component
         $this->search = '';
         $this->selectedSupplier = null;
         $this->loadProducts();
+    }
+
+    #[Computed]
+    public function lastOrder(): ?Order
+    {
+        $customerId = Auth::user()?->customer_id;
+
+        if (! $customerId) {
+            return null;
+        }
+
+        return Order::query()
+            ->where('customer_id', $customerId)
+            ->where('status', '!=', OrderStatus::CANCELLED)
+            ->with('items')
+            ->orderByDesc('order_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function repeatLastOrder(): void
+    {
+        $order = $this->lastOrder;
+
+        if (! $order) {
+            Notification::make()->title('Geen eerdere bestelling gevonden')->warning()->send();
+
+            return;
+        }
+
+        $added = 0;
+        $skipped = [];
+
+        foreach ($order->items as $item) {
+            if ($this->addOrderItemToCart($item)) {
+                $added++;
+            } else {
+                $skipped[] = $item->product_name;
+            }
+        }
+
+        $this->recalculateTotal();
+
+        if ($added === 0) {
+            Notification::make()
+                ->title('Geen enkele regel kon worden overgenomen')
+                ->body('De producten uit bestelling '.$order->order_number.' zijn niet meer beschikbaar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->cartOpen = true;
+
+        $notification = Notification::make()
+            ->title($added.' '.($added === 1 ? 'regel' : 'regels').' uit '.$order->order_number.' in de winkelwagen')
+            ->success();
+
+        if ($skipped !== []) {
+            $notification->body('Niet meer beschikbaar: '.implode(', ', array_unique($skipped)));
+        }
+
+        $notification->send();
     }
 
     public function continueShopping(): void
@@ -474,6 +539,7 @@ new class extends Component
         $this->cartOpen = false;
         $this->confirmOrderModalOpen = false;
         $this->quantities = [];
+        unset($this->lastOrder);
 
         Notification::make()->title('Bestelling geplaatst!')->success()->send();
         $this->loadProducts();
@@ -553,6 +619,74 @@ new class extends Component
         }
 
         $this->quantities[$this->cart[$cartKey]['product_id']] = (float) $this->cart[$cartKey]['quantity'];
+    }
+
+    private function addOrderItemToCart(OrderItem $item): bool
+    {
+        $product = Product::query()
+            ->where('is_active', true)
+            ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
+            ->find($item->product_id);
+
+        if (! $product) {
+            return false;
+        }
+
+        $productSupplier = $item->product_supplier_id
+            ? $product->activeProductSuppliers->firstWhere('id', $item->product_supplier_id)
+            : $product->defaultProductSupplier();
+
+        if (! $productSupplier) {
+            return false;
+        }
+
+        $quantity = max((float) ($product->min_order_quantity ?? 1), (float) $item->quantity);
+
+        if ($product->isWholeChicken()) {
+            $gramVariant = $product->activeGramVariants->firstWhere('id', $item->product_gram_variant_id)
+                ?? $product->defaultGramVariant();
+
+            if (! $gramVariant) {
+                return false;
+            }
+
+            $cartKey = $this->cartKey($product->id, $productSupplier->id, $gramVariant->id);
+            $preview = $this->buildWholeChickenPreview($product, $gramVariant, $productSupplier, $quantity);
+            $this->cart[$cartKey] = $this->makeWholeChickenCartLine($product, $gramVariant, $productSupplier, $preview, $quantity, $cartKey);
+
+            $this->rememberSelection($product, $productSupplier, gramVariantId: $gramVariant->id);
+        } else {
+            $packaging = $product->activePackagings->firstWhere('id', $item->product_packaging_id)
+                ?? $product->defaultPackaging();
+
+            if (! $packaging || ! $packaging->isAvailableForProductSupplier($productSupplier->id)) {
+                return false;
+            }
+
+            $quantity = max((float) ($packaging->min_order_quantity ?? $product->min_order_quantity ?? 1), (float) $item->quantity);
+            $cartKey = $this->cartKey($product->id, $productSupplier->id, null, $packaging->id);
+            $preview = $this->buildStandardPreview($product, $packaging, $productSupplier, $quantity);
+            $this->cart[$cartKey] = $this->makeStandardCartLine($product, $packaging, $productSupplier, $preview, $quantity, $cartKey);
+
+            $this->rememberSelection($product, $productSupplier, packagingId: $packaging->id);
+        }
+
+        $this->quantities[$product->id] = $quantity;
+
+        return true;
+    }
+
+    private function rememberSelection(
+        Product $product,
+        ProductSupplier $productSupplier,
+        ?int $gramVariantId = null,
+        ?int $packagingId = null,
+    ): void {
+        $this->selections[$product->id] = [
+            'supplier_id' => $productSupplier->id,
+            'gram_variant_id' => $gramVariantId,
+            'packaging_id' => $packagingId,
+        ];
     }
 
     private function availablePackagings(Product $product): Collection
@@ -914,6 +1048,43 @@ new class extends Component
             @endif
         </div>
     </div>
+
+    @if($this->lastOrder)
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
+                <div class="flex items-start gap-3 min-w-0">
+                    <div class="shrink-0 bg-primary-50 text-primary-600 rounded-xl w-9 h-9 flex items-center justify-center">
+                        <x-heroicon-o-arrow-path class="w-5 h-5" />
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-gray-800">Herhaal vorige bestelling</p>
+                        <p class="text-xs text-gray-500 truncate">
+                            {{ $this->lastOrder->order_number }}
+                            @if($this->lastOrder->order_date)
+                                · {{ $this->lastOrder->order_date->translatedFormat('j F Y') }}
+                            @endif
+                            · {{ $this->lastOrder->items->count() }} {{ $this->lastOrder->items->count() === 1 ? 'regel' : 'regels' }}
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    wire:click="repeatLastOrder"
+                    wire:loading.attr="disabled"
+                    wire:target="repeatLastOrder"
+                    type="button"
+                    class="shrink-0 inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm"
+                >
+                    <span wire:loading.remove wire:target="repeatLastOrder">
+                        <x-heroicon-o-arrow-path class="w-4 h-4" />
+                    </span>
+                    <span wire:loading wire:target="repeatLastOrder" class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                    In winkelwagen zetten
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Je kunt daarna nog aantallen aanpassen of producten toevoegen voordat je bestelt.</p>
+        </div>
+    @endif
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
