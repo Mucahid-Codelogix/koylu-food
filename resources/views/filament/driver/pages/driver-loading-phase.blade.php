@@ -128,28 +128,46 @@
 
                         <div class="divide-y divide-gray-100 dark:divide-gray-800">
                             @foreach ($loadRows as $loadRow)
-                                <div class="flex items-center justify-between gap-3 px-3 py-2">
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ $loadRow['label'] }}</p>
-                                        @if (($product['has_mixed_suppliers'] ?? false) && ! empty($loadRow['supplier_breakdown']))
-                                            <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                                                @foreach ($loadRow['supplier_breakdown'] as $supplierName => $supplierBoxes)
-                                                    {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
-                                                @endforeach
-                                            </p>
-                                        @endif
-                                    </div>
-                                    <p class="shrink-0 text-right tabular-nums leading-tight">
+                                {{-- Mobiel en in de smalle tabletkolom: variant en aantal boven, details eronder.
+                                     Op tablet in één kolom past alles op één regel. --}}
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
+                                    <span class="order-1 shrink-0 whitespace-nowrap rounded-md bg-gray-100 px-2 py-0.5 text-sm font-bold text-gray-900 dark:bg-gray-800 dark:text-white">
+                                        {{ $loadRow['label'] }}
+                                    </span>
+
+                                    <span class="order-2 ml-auto shrink-0 whitespace-nowrap tabular-nums sm:order-3 lg:order-2">
                                         <span class="text-xl font-extrabold text-gray-900 dark:text-white">
                                             {{ $isWholeChicken ? $this->formatBoxes($loadRow['boxes']) : $this->formatBoxes($loadRow['quantity']).'x' }}
                                         </span>
-                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">
-                                            @if ($isWholeChicken)
-                                                doos · {{ number_format($loadRow['pieces'], 0, ',', '.') }} st · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg
-                                            @else
-                                                à {{ $this->formatBoxes($loadRow['box_weight_kg']) }} kg · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg totaal
-                                            @endif
-                                        </span>
+                                        @if ($isWholeChicken)
+                                            <span class="text-[11px] font-semibold text-gray-500">doos</span>
+                                        @endif
+                                    </span>
+
+                                    <p class="order-3 w-full text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:order-2 sm:w-auto sm:flex-1 sm:pl-0 lg:order-3 lg:w-full ">
+                                        @if ($isWholeChicken)
+                                            {{ number_format($loadRow['pieces'], 0, ',', '.') }} st
+                                            · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg
+                                        @else
+                                            à {{ $this->formatBoxes($loadRow['box_weight_kg']) }} kg
+                                            · {{ number_format($loadRow['kg'], 2, ',', '.') }} kg totaal
+                                        @endif
+
+                                        @if (($product['has_mixed_suppliers'] ?? false) && ! empty($loadRow['supplier_breakdown']))
+                                            <span class="block">
+                                                @foreach ($loadRow['supplier_breakdown'] as $supplierName => $supplierBoxes)
+                                                    {{ $supplierName }} {{ $this->formatBoxes($supplierBoxes) }}x{{ $loop->last ? '' : ' · ' }}
+                                                @endforeach
+                                            </span>
+                                        @endif
+
+                                        @if (! empty($loadRow['substituted_from']))
+                                            <span class="block font-medium text-amber-700 dark:text-amber-500">
+                                                @foreach ($loadRow['substituted_from'] as $orderedLabel => $orderedBoxes)
+                                                    {{ $this->formatBoxes($orderedBoxes) }}x i.p.v. {{ $orderedLabel }}{{ $loop->last ? '' : ' · ' }}
+                                                @endforeach
+                                            </span>
+                                        @endif
                                     </p>
                                 </div>
                             @endforeach
@@ -205,14 +223,16 @@
                                                         ->map(fn (array $boxRow): bool => (float) str_replace(',', '.', (string) $boxRow['quantity']) > 0)
                                                         ->values()
                                                         ->all();
+                                                    $assignedOnServer = $this->assignedBoxes($itemId);
+                                                    $rowSignature = md5(json_encode($breakdownRows).$row['loaded_quantity'].count($loadedRows));
                                                 @endphp
 
                                                 <div
-                                                    wire:key="row-{{ $itemId }}"
+                                                    wire:key="row-{{ $itemId }}-{{ $rowSignature }}"
                                                     x-data="{
                                                         open: false,
                                                         ordered: @js($ordered),
-                                                        assigned: @js($ordered),
+                                                        assigned: @js($assignedOnServer),
                                                         shown: @js($shown),
                                                         qtyInputs() {
                                                             return Array.from($el.querySelectorAll('[data-box-qty]'));
@@ -310,7 +330,7 @@
 
                                                         <button
                                                             type="button"
-                                                            @click="open = ! open"
+                                                            @click="open = ! open; $nextTick(() => recount())"
                                                             class="koylu-btn-secondary !w-auto shrink-0 !px-4 !py-2.5 text-xs"
                                                             x-text="open ? 'Sluiten' : 'Wijzigen'"
                                                         >Wijzigen</button>
@@ -394,7 +414,7 @@
                                                             <x-heroicon-o-check class="w-4 h-4 shrink-0" x-show="assigned === ordered" />
                                                             <x-heroicon-o-exclamation-triangle class="w-4 h-4 shrink-0" x-show="assigned !== ordered" x-cloak />
                                                             <span>
-                                                                <span x-text="Number(assigned.toFixed(2))">{{ $this->formatBoxes($ordered) }}</span>
+                                                                <span x-text="Number(assigned.toFixed(2))">{{ $this->formatBoxes($assignedOnServer) }}</span>
                                                                 van {{ $this->formatBoxes($ordered) }} dozen toegewezen
                                                             </span>
                                                         </div>
@@ -474,13 +494,28 @@
                                                 :is-corrected="$this->isQuantityCorrected($row['order_item_id'], $row['quantity'])"
                                             />
 
+                                            @if (! empty($this->savedRows[$row['order_item_id']]))
+                                                <span
+                                                    wire:key="saved-{{ $row['order_item_id'] }}-{{ $this->savedRows[$row['order_item_id']] }}"
+                                                    x-data="{ show: true }"
+                                                    x-init="setTimeout(() => show = false, 2500)"
+                                                    x-show="show"
+                                                    x-transition.opacity
+                                                    class="inline-flex items-center gap-1 text-xs font-medium text-success-600 dark:text-success-400"
+                                                >
+                                                    <x-heroicon-o-check-circle class="w-4 h-4" />
+                                                    Opgeslagen
+                                                </span>
+                                            @endif
+
                                             <div class="flex items-center gap-1">
                                                 <input
                                                     type="number"
                                                     step="any"
                                                     min="0"
                                                     inputmode="decimal"
-                                                    wire:model="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
+                                                    wire:model.blur="loadingData.{{ $row['order_item_id'] }}.actual_weight_kg"
+                                                    wire:change="saveRow({{ $row['order_item_id'] }})"
                                                     placeholder="0.000"
                                                     aria-label="Werkelijk gewicht"
                                                     class="w-24 text-right text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 dark:bg-gray-900 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"

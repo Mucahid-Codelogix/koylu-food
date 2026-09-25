@@ -54,6 +54,13 @@ class DriverLoadingPhase extends Page
      */
     public array $breakdownTouched = [];
 
+    /**
+     * Tijdstip van de laatste opslag per regel; alleen voor het vinkje "opgeslagen".
+     *
+     * @var array<int, int>
+     */
+    public array $savedRows = [];
+
     /** Reserveregels die klaarstaan voor "Regel toevoegen", zonder serververzoek. */
     public const SPARE_BREAKDOWN_ROWS = 4;
 
@@ -208,7 +215,9 @@ class DriverLoadingPhase extends Page
                         && $item->loaded_gram_variant_id !== $item->product_gram_variant_id,
                     'split_from' => $item->split_from_order_item_id,
                     'is_checked' => $item->loading_checked_at !== null,
+                    'ordered_variant_id' => $item->product_gram_variant_id,
                     'loaded_rows' => [[
+                        'variant_id' => $item->loaded_gram_variant_id ?? $item->product_gram_variant_id,
                         'label' => $item->effectiveGramVariantLabel(),
                         'boxes' => $boxQty,
                         'weight_kg' => $item->loaded_actual_weight_kg !== null
@@ -247,13 +256,25 @@ class DriverLoadingPhase extends Page
 
                     if (! isset($products[$productId]['variant_breakdown'][$variantKey])) {
                         $products[$productId]['variant_breakdown'][$variantKey] = [
+                            'variant_id' => $effectiveVariant?->id,
                             'label' => $effectiveVariant?->displayLabel() ?? '—',
                             'weight_grams' => (int) ($effectiveVariant?->weight_grams ?? 0),
                             'boxes' => 0,
                             'pieces' => 0,
                             'kg' => 0,
                             'supplier_breakdown' => [],
+                            'substituted_from' => [],
                         ];
+                    }
+
+                    // Wat er geladen wordt in plaats van de bestelde variant blijft
+                    // zichtbaar, anders verdwijnt de oorspronkelijke bestelling uit beeld.
+                    if ($item->loaded_gram_variant_id !== null
+                        && $item->loaded_gram_variant_id !== $item->product_gram_variant_id) {
+                        $orderedLabel = $item->productGramVariant?->displayLabel() ?? '—';
+
+                        $products[$productId]['variant_breakdown'][$variantKey]['substituted_from'][$orderedLabel] =
+                            ($products[$productId]['variant_breakdown'][$variantKey]['substituted_from'][$orderedLabel] ?? 0) + $boxQty;
                     }
 
                     $products[$productId]['variant_breakdown'][$variantKey]['boxes'] += $boxQty;
@@ -401,12 +422,41 @@ class DriverLoadingPhase extends Page
         $current = $this->decimalInput($this->loadingData[$orderItemId]['loaded_quantity'] ?? '') ?? 0;
 
         $this->loadingData[$orderItemId]['loaded_quantity'] = $this->formatBoxes(max(0, $current + $step));
+
+        $this->saveRow($orderItemId);
     }
 
     public function assignedBoxes(int $orderItemId): float
     {
         return collect($this->boxBreakdowns[$orderItemId] ?? [])
             ->sum(fn (array $row): float => (float) ($this->decimalInput($row['quantity'] ?? '') ?? 0));
+    }
+
+    /**
+     * Regels van gewone producten worden meteen opgeslagen zodra de chauffeur
+     * het veld verlaat, zodat werk niet verloren gaat als de telefoon wegvalt.
+     */
+    public function saveRow(int $orderItemId): void
+    {
+        $orderItem = OrderItem::query()
+            ->with(['productGramVariant', 'loadedGramVariant'])
+            ->findOrFail($orderItemId);
+
+        $loadingService = app(OrderItemLoadingService::class);
+
+        $loadingService->recordActualWeight(
+            $orderItem,
+            $this->decimalInput($this->loadingData[$orderItemId]['actual_weight_kg'] ?? ''),
+        );
+
+        $loadingService->recordLoadedQuantity(
+            $orderItem->fresh(),
+            $this->decimalInput($this->loadingData[$orderItemId]['loaded_quantity'] ?? ''),
+        );
+
+        $this->savedRows[$orderItemId] = now()->getTimestampMs();
+
+        $this->refreshRouteData();
     }
 
     public function saveBoxBreakdown(int $orderItemId): void

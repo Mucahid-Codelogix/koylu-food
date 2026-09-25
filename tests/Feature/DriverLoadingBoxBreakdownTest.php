@@ -3,6 +3,7 @@
 use App\Enums\DeliveryStatus;
 use App\Enums\ProductType;
 use App\Enums\RouteStatus;
+use App\Filament\Driver\Pages\DriverDashboard;
 use App\Filament\Driver\Pages\DriverLoadingPhase;
 use App\Models\Customer;
 use App\Models\Delivery;
@@ -448,4 +449,84 @@ it('zet de leverbonknop en de productenlijst in de productbalk', function () {
         ->assertSeeHtml(route('leverbon.route', $route))
         ->assertSeeHtml('Leverbonnen downloaden')
         ->assertSee('Alle producten');
+});
+
+it('laat de chauffeur na het afronden opnieuw het laadscherm in', function () {
+    [$driver, $route, $item] = boxBreakdownRoute(orderedBoxes: 2);
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    loadingPage($route)->call('finishLoading');
+
+    expect($route->fresh()->loading_completed_at)->not->toBeNull();
+
+    Testable::create(DriverDashboard::class)
+        ->assertSee('Terug naar laden')
+        ->call('continueLoading')
+        ->assertRedirect(DriverLoadingPhase::getUrl().'?routeId='.$route->id);
+
+    // En het scherm zelf blijft bereikbaar met de bestaande verdeling.
+    loadingPage($route->fresh())->assertSee('Per klant');
+});
+
+it('rekent na het opslaan van 1, 1 en 0 met twee geladen dozen van de drie bestelde', function () {
+    [$driver, $route, $item, $ordered] = boxBreakdownRoute(orderedBoxes: 3);
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    $page = loadingPage($route)
+        ->set("boxBreakdowns.{$item->id}.0.quantity", '1')
+        ->set("boxBreakdowns.{$item->id}.1.quantity", '1')
+        ->set("boxBreakdowns.{$item->id}.2.quantity", '0')
+        ->set("breakdownTouched.{$item->id}", true)
+        ->call('saveBoxBreakdown', $item->id);
+
+    $item->refresh();
+
+    expect((float) $item->quantity)->toBe(3.0)
+        ->and((float) $item->loaded_packaging_quantity)->toBe(2.0)
+        ->and($item->billableWeightKg(2))->toBe(24.0)
+        ->and($page->instance()->assignedBoxes($item->id))->toBe(2.0);
+
+    // Na het opnieuw opbouwen staan er nog maar twee dozen klaar.
+    $rows = collect($page->get('boxBreakdowns')[$item->id])
+        ->filter(fn (array $boxRow): bool => (float) $boxRow['quantity'] > 0);
+
+    expect($rows)->toHaveCount(2);
+});
+
+it('toont de teller met de werkelijk toegewezen dozen, ook zonder javascript', function () {
+    [$driver, $route, $item] = boxBreakdownRoute(orderedBoxes: 3);
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    loadingPage($route)
+        ->set("boxBreakdowns.{$item->id}.2.quantity", '0')
+        ->set("breakdownTouched.{$item->id}", true)
+        ->call('saveBoxBreakdown', $item->id)
+        ->assertSeeHtml('assigned: 2')
+        ->assertSee('van 3 dozen toegewezen');
+});
+
+it('laat bij per gramvariant laden zien welke variant oorspronkelijk besteld was', function () {
+    [$driver, $route, $item, $ordered, $alternative] = boxBreakdownRoute(orderedBoxes: 2);
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    $page = loadingPage($route)
+        ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
+        ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
+        ->call('saveBoxBreakdown', $item->id)
+        ->assertSee('i.p.v. 1200 g');
+
+    $breakdown = collect($page->get('products')[0]['variant_breakdown'])
+        ->keyBy('label');
+
+    expect($breakdown['1300 g']['substituted_from'])->toBe(['1200 g' => 1.0])
+        ->and($breakdown['1200 g']['substituted_from'])->toBe([]);
 });

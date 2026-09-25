@@ -137,6 +137,10 @@
                                 <x-heroicon-o-truck class="w-5 h-5" />
                                 Start leveren
                             </button>
+                            <button wire:click="continueLoading" class="koylu-btn-secondary w-full">
+                                <x-heroicon-o-arrow-uturn-left class="w-4 h-4" />
+                                Terug naar laden
+                            </button>
                         @endif
                     </div>
                 </div>

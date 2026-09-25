@@ -29,6 +29,7 @@
                 min="0"
                 inputmode="decimal"
                 wire:model.blur="loadingData.{{ $orderItemId }}.loaded_quantity"
+                wire:change="saveRow({{ $orderItemId }})"
                 @class([
                     'w-16 text-center text-base font-semibold border-0 border-x px-1 py-2.5 dark:bg-gray-900 focus:ring-0 focus:outline-none',
                     'border-gray-200 dark:border-gray-600' => ! $isCorrected,

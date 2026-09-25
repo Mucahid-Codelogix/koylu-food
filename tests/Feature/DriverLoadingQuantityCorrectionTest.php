@@ -166,3 +166,30 @@ it('past het geladen aantal aan met de plus- en minknop', function () {
 
     expect((float) $item->fresh()->loaded_packaging_quantity)->toBe(2.0);
 });
+
+it('slaat een gewijzigd aantal meteen op en bevestigt dat op het scherm', function () {
+    [$driver, $route, $item] = loadingRouteWithItem();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
+        ->set("loadingData.{$item->id}.loaded_quantity", '2')
+        ->call('saveRow', $item->id)
+        ->assertSee('Opgeslagen');
+
+    expect((float) $item->fresh()->loaded_packaging_quantity)->toBe(2.0);
+});
+
+it('slaat het werkelijke gewicht meteen op zonder klaar met laden', function () {
+    [$driver, $route, $item] = loadingRouteWithItem();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
+        ->set("loadingData.{$item->id}.actual_weight_kg", '28,5')
+        ->call('saveRow', $item->id);
+
+    expect((float) $item->fresh()->loaded_actual_weight_kg)->toBe(28.5);
+});

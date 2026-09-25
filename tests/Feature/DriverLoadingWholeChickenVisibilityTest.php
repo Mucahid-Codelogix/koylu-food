@@ -80,3 +80,43 @@ it('toont gramvariant, stuks en kilo per klant op de laadkaart voor hele kip', f
     expect($customers->pluck('ordered_variant_label')->all())->toBe(['800 g', '1500 g'])
         ->and($customers->pluck('quantity')->all())->toBe([1.0, 2.0]);
 });
+
+it('houdt de laadkaart kleurloos: kleur betekent alleen goed of fout', function () {
+    $driver = User::factory()->driver()->create();
+    $route = Route::factory()->create(['driver_id' => $driver->id]);
+
+    $product = Product::factory()->create(['name' => 'Hele kip']);
+    $variant = ProductGramVariant::factory()->create([
+        'product_id' => $product->id,
+        'weight_grams' => 1200,
+        'label' => '1200 g',
+    ]);
+
+    $order = Order::factory()->placed()->for(Customer::factory())->create();
+    RouteStop::factory()->create([
+        'route_id' => $route->id,
+        'order_id' => $order->id,
+        'stop_order' => 1,
+    ]);
+    OrderItem::factory()->create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'product_name' => 'Hele kip',
+        'product_type' => ProductType::WholeChicken,
+        'product_gram_variant_id' => $variant->id,
+        'unit' => 'Doos 1200 g',
+        'quantity' => 2,
+        'ordered_pieces' => 20,
+        'ordered_total_weight_kg' => 24,
+    ]);
+
+    $this->actingAs($driver);
+
+    $component = Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id]);
+
+    $component->assertSee('1200 g');
+
+    $component->assertDontSeeHtml('bg-sky-500');
+    $component->assertDontSeeHtml('bg-violet-500');
+    $component->assertDontSeeHtml('bg-fuchsia-500');
+});
