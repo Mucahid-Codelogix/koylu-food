@@ -4,8 +4,11 @@ use App\Enums\ProductType;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\RelationManagers\GramVariantsRelationManager;
 use App\Filament\Resources\Products\Schemas\ProductGramVariantForm;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductGramVariant;
+use App\Models\ProductSupplier;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
@@ -56,4 +59,30 @@ it('toont de kilo naast de grammen in de lijst met gramvarianten', function () {
 
     gramVariantsManager($product)
         ->assertSee('1200 g (1,200 kg)');
+});
+
+it('toont in de shop het doosgewicht in de keuzelijst met gramvarianten', function () {
+    $customer = Customer::factory()->create();
+    $user = User::factory()->create(['customer_id' => $customer->id]);
+
+    $product = Product::factory()->create([
+        'name' => 'Hele Kip',
+        'product_type' => ProductType::WholeChicken,
+    ]);
+
+    ProductGramVariant::factory()->for($product)->create([
+        'weight_grams' => 1200,
+        'pieces_per_box' => 10,
+        'box_weight_kg' => 12.35,
+        'is_default' => true,
+    ]);
+
+    ProductSupplier::factory()->for($product)->for(Supplier::factory()->create())->create([
+        'price_per_kg' => 6.5,
+        'is_default' => true,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('customer.shop-products')
+        ->assertSee('1200 g · 12,35 kg/doos');
 });

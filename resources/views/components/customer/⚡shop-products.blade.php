@@ -1193,7 +1193,7 @@ new class extends Component
                                                 class="mt-1 w-full text-sm border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
                                             >
                                                 @foreach($availableGramVariants as $variant)
-                                                    <option value="{{ $variant->id }}">{{ $variant->boxDescription() }}</option>
+                                                    <option value="{{ $variant->id }}">{{ $variant->shortBoxDescription() }}</option>
                                                 @endforeach
                                             </select>
                                         @endif

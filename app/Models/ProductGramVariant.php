@@ -69,6 +69,19 @@ class ProductGramVariant extends Model
         return sprintf('%d g', $this->weight_grams);
     }
 
+    /**
+     * Korte weergave voor smalle keuzelijsten: de gramvariant en het doosgewicht,
+     * zodat de kilo's niet wegvallen achter het afkappen van de tekst.
+     */
+    public function shortBoxDescription(): string
+    {
+        return sprintf(
+            '%s · %s kg/doos',
+            $this->displayLabel(),
+            number_format((float) $this->box_weight_kg, 2, ',', '.')
+        );
+    }
+
     public function boxDescription(): string
     {
         return sprintf(
