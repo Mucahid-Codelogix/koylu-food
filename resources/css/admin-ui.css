@@ -2,6 +2,10 @@
  * Köylü UI — gedeelde componenten voor custom Filament-pagina's (admin, driver, klant).
  * Gebruik Blade components: <x-koylu.card>, <x-koylu.kpi>, enz.
  */
+[x-cloak] {
+    display: none !important;
+}
+
 @layer components {
     .koylu-page {
         @apply space-y-6 max-w-[1400px];

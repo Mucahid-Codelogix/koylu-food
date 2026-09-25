@@ -117,9 +117,9 @@ it('factureert het ingevulde werkelijke gewicht na het laden en toont dat aan de
 
     Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id])
         ->assertSeeInOrder(['2 dozen', '1200 g'])
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.0.weight_kg", '12.8')
         ->set("boxBreakdowns.{$item->id}.1.weight_kg", '12.8')
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id)
         ->assertSeeInOrder(['Geladen:', '1200 g', 'gewogen 25,60 kg']);
 

@@ -46,6 +46,17 @@ class DriverLoadingPhase extends Page
      */
     public array $boxBreakdowns = [];
 
+    /**
+     * Per orderregel: heeft de chauffeur de verdeling aangeraakt? Alleen dan
+     * wordt er bij doorgaan iets opgeslagen.
+     *
+     * @var array<int, bool>
+     */
+    public array $breakdownTouched = [];
+
+    /** Reserveregels die klaarstaan voor "Regel toevoegen", zonder serververzoek. */
+    public const SPARE_BREAKDOWN_ROWS = 4;
+
     public function mount(): void
     {
         $routeId = request()->query('routeId') ?? request()->route('routeId');
@@ -90,8 +101,62 @@ class DriverLoadingPhase extends Page
                         : '',
                     'loaded_quantity' => (string) (float) ($item->loaded_packaging_quantity ?? $item->quantity),
                 ];
+
+                if ($item->isWholeChicken() && $item->split_from_order_item_id === null) {
+                    $this->boxBreakdowns[$item->id] = $this->defaultBoxRows($item);
+                    $this->breakdownTouched[$item->id] = false;
+                }
             }
         }
+    }
+
+    /**
+     * De verdeling zoals die nu geladen is, aangevuld met lege reserveregels
+     * zodat "Regel toevoegen" in de browser kan zonder serververzoek.
+     *
+     * @return array<int, array{quantity: string, variant_id: int|null, weight_kg: string}>
+     */
+    private function defaultBoxRows(OrderItem $orderItem): array
+    {
+        $splits = app(WholeChickenBoxBreakdownService::class)->splitsOf($orderItem);
+        $rows = [];
+
+        if ($splits->isNotEmpty()) {
+            foreach (collect([$orderItem])->concat($splits) as $part) {
+                $rows[] = [
+                    'quantity' => $this->formatBoxes((float) ($part->loaded_packaging_quantity ?? $part->quantity)),
+                    'variant_id' => $part->loaded_gram_variant_id ?? $part->product_gram_variant_id,
+                    'weight_kg' => $part->loaded_actual_weight_kg !== null
+                        ? (string) (float) $part->loaded_actual_weight_kg
+                        : '',
+                ];
+            }
+        } else {
+            $variantId = $orderItem->loaded_gram_variant_id ?? $orderItem->product_gram_variant_id;
+            $boxes = max(1, (int) ceil((float) ($orderItem->loaded_packaging_quantity ?? $orderItem->quantity)));
+
+            for ($i = 0; $i < $boxes; $i++) {
+                $rows[] = [
+                    'quantity' => '1',
+                    'variant_id' => $variantId,
+                    'weight_kg' => $orderItem->loaded_actual_weight_kg !== null && $boxes === 1
+                        ? (string) (float) $orderItem->loaded_actual_weight_kg
+                        : '',
+                ];
+            }
+        }
+
+        $variantId = $orderItem->loaded_gram_variant_id ?? $orderItem->product_gram_variant_id;
+
+        for ($i = 0; $i < self::SPARE_BREAKDOWN_ROWS; $i++) {
+            $rows[] = [
+                'quantity' => '0',
+                'variant_id' => $variantId,
+                'weight_kg' => '',
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -312,84 +377,6 @@ class DriverLoadingPhase extends Page
     }
 
     /**
-     * Klapt de regel uit naar één veld per bestelde doos.
-     */
-    public function openBoxBreakdown(int $orderItemId): void
-    {
-        $orderItem = OrderItem::query()
-            ->with(['product.activeGramVariants.productSuppliers', 'productGramVariant', 'loadedGramVariant'])
-            ->findOrFail($orderItemId);
-
-        if (! $orderItem->isWholeChicken()) {
-            return;
-        }
-
-        $splits = app(WholeChickenBoxBreakdownService::class)->splitsOf($orderItem);
-        $rows = [];
-
-        if ($splits->isNotEmpty()) {
-            // Al eerder verdeeld: toon de verdeling zoals die nu geladen is.
-            foreach (collect([$orderItem])->concat($splits) as $part) {
-                $rows[] = [
-                    'quantity' => $this->formatBoxes((float) ($part->loaded_packaging_quantity ?? $part->quantity)),
-                    'variant_id' => $part->loaded_gram_variant_id ?? $part->product_gram_variant_id,
-                    'weight_kg' => $part->loaded_actual_weight_kg !== null
-                        ? (string) (float) $part->loaded_actual_weight_kg
-                        : '',
-                ];
-            }
-        } else {
-            $variantId = $orderItem->loaded_gram_variant_id ?? $orderItem->product_gram_variant_id;
-            $boxes = max(1, (int) ceil((float) ($orderItem->loaded_packaging_quantity ?? $orderItem->quantity)));
-
-            for ($i = 0; $i < $boxes; $i++) {
-                $rows[] = [
-                    'quantity' => '1',
-                    'variant_id' => $variantId,
-                    'weight_kg' => '',
-                ];
-            }
-        }
-
-        $this->boxBreakdowns[$orderItemId] = $rows;
-    }
-
-    public function closeBoxBreakdown(int $orderItemId): void
-    {
-        unset($this->boxBreakdowns[$orderItemId]);
-    }
-
-    public function addBoxBreakdownRow(int $orderItemId): void
-    {
-        if (! isset($this->boxBreakdowns[$orderItemId])) {
-            return;
-        }
-
-        $last = end($this->boxBreakdowns[$orderItemId]);
-
-        $this->boxBreakdowns[$orderItemId][] = [
-            'quantity' => '1',
-            'variant_id' => $last['variant_id'] ?? null,
-            'weight_kg' => '',
-        ];
-    }
-
-    public function removeBoxBreakdownRow(int $orderItemId, int $index): void
-    {
-        if (! isset($this->boxBreakdowns[$orderItemId][$index])) {
-            return;
-        }
-
-        unset($this->boxBreakdowns[$orderItemId][$index]);
-
-        $this->boxBreakdowns[$orderItemId] = array_values($this->boxBreakdowns[$orderItemId]);
-
-        if ($this->boxBreakdowns[$orderItemId] === []) {
-            unset($this->boxBreakdowns[$orderItemId]);
-        }
-    }
-
-    /**
      * Aantal bestelde dozen van de regel, inclusief eerder afgesplitste dozen.
      */
     public function orderedBoxes(int $orderItemId): float
@@ -403,17 +390,6 @@ class DriverLoadingPhase extends Page
         }
 
         return 0.0;
-    }
-
-    public function stepBoxBreakdownRow(int $orderItemId, int $index, int $step): void
-    {
-        if (! isset($this->boxBreakdowns[$orderItemId][$index])) {
-            return;
-        }
-
-        $current = $this->decimalInput($this->boxBreakdowns[$orderItemId][$index]['quantity'] ?? '') ?? 0;
-
-        $this->boxBreakdowns[$orderItemId][$index]['quantity'] = $this->formatBoxes(max(0, $current + $step));
     }
 
     /**
@@ -436,7 +412,7 @@ class DriverLoadingPhase extends Page
     public function saveBoxBreakdown(int $orderItemId): void
     {
         if ($this->persistBoxBreakdown($orderItemId, notifyOnSuccess: true)) {
-            $this->closeBoxBreakdown($orderItemId);
+            $this->breakdownTouched[$orderItemId] = false;
             $this->refreshRouteData();
         }
     }
@@ -707,12 +683,12 @@ class DriverLoadingPhase extends Page
         foreach ($product['customers'] ?? [] as $row) {
             $itemId = $row['order_item_id'];
 
-            if (isset($this->boxBreakdowns[$itemId])) {
+            if (! empty($this->breakdownTouched[$itemId])) {
                 if (! $this->persistBoxBreakdown($itemId, notifyOnSuccess: false)) {
                     return false;
                 }
 
-                $this->closeBoxBreakdown($itemId);
+                $this->breakdownTouched[$itemId] = false;
 
                 continue;
             }
@@ -780,7 +756,34 @@ class DriverLoadingPhase extends Page
             ->where('split_from_order_item_id', $orderItem->id)
             ->update(['loading_checked_at' => $checkedAt]);
 
-        $this->refreshRouteData();
+        $this->markRowChecked($orderItemId, $checkedAt !== null);
+    }
+
+    /**
+     * Alleen deze regel bijwerken in plaats van de hele laadkaart opnieuw op te
+     * bouwen: dat houdt de pagina rustig en voorkomt dat rijen verspringen.
+     */
+    private function markRowChecked(int $orderItemId, bool $isChecked): void
+    {
+        foreach ($this->products as $productIndex => $product) {
+            $changed = false;
+
+            foreach ($product['customers'] ?? [] as $rowIndex => $row) {
+                if ($row['order_item_id'] !== $orderItemId) {
+                    continue;
+                }
+
+                $this->products[$productIndex]['customers'][$rowIndex]['is_checked'] = $isChecked;
+                $changed = true;
+            }
+
+            if ($changed) {
+                $this->products[$productIndex]['checked_count'] = count(array_filter(
+                    $this->products[$productIndex]['customers'],
+                    fn (array $row): bool => $row['is_checked'],
+                ));
+            }
+        }
     }
 
     public function nextProduct(): void

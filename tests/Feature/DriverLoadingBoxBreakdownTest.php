@@ -84,17 +84,36 @@ function loadingPage(Route $route): Testable
     return Testable::create(DriverLoadingPhase::class, [], ['routeId' => $route->id]);
 }
 
-it('klapt de regel uit naar één veld per bestelde doos', function () {
+/**
+ * De chauffeur past velden aan in de al klaarstaande verdeling; Alpine zet
+ * daarbij de "aangeraakt"-vlag, dus die zetten we hier ook.
+ *
+ * @param  array<string, mixed>  $values
+ */
+function editBoxRow(Testable $page, int $itemId, int $index, array $values): Testable
+{
+    foreach ($values as $key => $value) {
+        $page->set("boxBreakdowns.{$itemId}.{$index}.{$key}", $value);
+    }
+
+    return $page->set("breakdownTouched.{$itemId}", true);
+}
+
+it('zet één veld per bestelde doos klaar, plus lege reserveregels', function () {
     [$driver, $route, $item, $ordered] = boxBreakdownRoute(orderedBoxes: 3);
 
     $this->actingAs($driver);
     Filament::setCurrentPanel('driver');
 
-    loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
-        ->assertCount("boxBreakdowns.{$item->id}", 3)
+    $page = loadingPage($route)
+        ->assertCount("boxBreakdowns.{$item->id}", 3 + DriverLoadingPhase::SPARE_BREAKDOWN_ROWS)
         ->assertSet("boxBreakdowns.{$item->id}.0.variant_id", $ordered->id)
-        ->assertSee('3 van 3 dozen toegewezen');
+        ->assertSet("boxBreakdowns.{$item->id}.0.quantity", '1')
+        ->assertSet("boxBreakdowns.{$item->id}.3.quantity", '0')
+        ->assertSet("breakdownTouched.{$item->id}", false)
+        ->assertSee('van 3 dozen toegewezen');
+
+    expect($page->get('boxBreakdowns')[$item->id][2]['quantity'])->toBe('1');
 });
 
 it('splitst de regel als één van de twee dozen een andere variant krijgt', function () {
@@ -104,8 +123,8 @@ it('splitst de regel als één van de twee dozen een andere variant krijgt', fun
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('saveBoxBreakdown', $item->id);
 
@@ -131,7 +150,7 @@ it('voegt dozen met dezelfde variant samen tot één regel', function () {
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id);
 
     $item->refresh();
@@ -149,9 +168,9 @@ it('factureert het per doos gewogen gewicht', function () {
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
         ->set("boxBreakdowns.{$item->id}.1.weight_kg", '13.1')
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Andere variant geladen')
         ->call('saveBoxBreakdown', $item->id);
 
@@ -168,8 +187,8 @@ it('negeert een gewicht dat maar bij een deel van de dozen is ingevuld', functio
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.0.weight_kg", '12.4')
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id);
 
     $item->refresh();
@@ -185,9 +204,8 @@ it('houdt het bestelde aantal intact als de chauffeur minder dozen laadt', funct
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
-        ->call('removeBoxBreakdownRow', $item->id, 2)
-        ->assertSee('2 van 3 dozen toegewezen')
+        ->set("boxBreakdowns.{$item->id}.2.quantity", '0')
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id);
 
     $item->refresh();
@@ -204,8 +222,8 @@ it('laat de chauffeur niet opslaan zonder reden bij een andere variant', functio
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id);
 
     expect(OrderItem::query()->where('split_from_order_item_id', $item->id)->count())->toBe(0)
@@ -219,8 +237,8 @@ it('slaat een openstaande verdeling ook op bij klaar met laden', function () {
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('finishLoading');
 
@@ -235,15 +253,15 @@ it('toont bij opnieuw wijzigen de verdeling zoals die nu geladen is', function (
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('saveBoxBreakdown', $item->id)
-        ->call('openBoxBreakdown', $item->id)
-        ->assertCount("boxBreakdowns.{$item->id}", 2)
+        ->assertCount("boxBreakdowns.{$item->id}", 2 + DriverLoadingPhase::SPARE_BREAKDOWN_ROWS)
         ->assertSet("boxBreakdowns.{$item->id}.0.variant_id", $ordered->id)
         ->assertSet("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
-        ->assertSee('2 van 2 dozen toegewezen');
+        ->assertSet("breakdownTouched.{$item->id}", false)
+        ->assertSee('van 2 dozen toegewezen');
 });
 
 it('ruimt de splitsing op als alle dozen weer de bestelde variant krijgen', function () {
@@ -253,12 +271,12 @@ it('ruimt de splitsing op als alle dozen weer de bestelde variant krijgen', func
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('saveBoxBreakdown', $item->id)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $ordered->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->call('saveBoxBreakdown', $item->id);
 
     expect(OrderItem::query()->where('split_from_order_item_id', $item->id)->count())->toBe(0)
@@ -274,9 +292,9 @@ it('factureert na een splitsing elke doos tegen het juiste gewicht', function ()
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
         ->set("boxBreakdowns.{$item->id}.1.weight_kg", '13.1')
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('saveBoxBreakdown', $item->id);
 
@@ -334,8 +352,8 @@ it('vinkt een klantregel af als geladen, inclusief de afgesplitste dozen', funct
     Filament::setCurrentPanel('driver');
 
     $page = loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
         ->set("boxBreakdowns.{$item->id}.1.variant_id", $alternative->id)
+        ->set("breakdownTouched.{$item->id}", true)
         ->set('loadingData.'.$item->id.'.substitution_reason', 'Niet op voorraad')
         ->call('saveBoxBreakdown', $item->id)
         ->call('toggleRowChecked', $item->id)
@@ -352,20 +370,18 @@ it('vinkt een klantregel af als geladen, inclusief de afgesplitste dozen', funct
         ->and($split->fresh()->loading_checked_at)->toBeNull();
 });
 
-it('telt met plus en min het aantal dozen op en af', function () {
+it('regelt plus, min en de teller in de browser zonder serververzoek', function () {
     [$driver, $route, $item] = boxBreakdownRoute(orderedBoxes: 2);
 
     $this->actingAs($driver);
     Filament::setCurrentPanel('driver');
 
     loadingPage($route)
-        ->call('openBoxBreakdown', $item->id)
-        ->call('stepBoxBreakdownRow', $item->id, 0, 1)
-        ->assertSet("boxBreakdowns.{$item->id}.0.quantity", '2')
-        ->assertSee('3 van 2 dozen toegewezen')
-        ->call('stepBoxBreakdownRow', $item->id, 0, -1)
-        ->call('stepBoxBreakdownRow', $item->id, 0, -1)
-        ->assertSet("boxBreakdowns.{$item->id}.0.quantity", '0');
+        ->assertSeeHtml('data-box-qty')
+        ->assertSeeHtml('step(')
+        ->assertSeeHtml('addRow()')
+        ->assertSeeHtml('removeRow(')
+        ->assertSeeHtml("breakdownTouched.{$item->id}");
 });
 
 it('toont geen paginakop zodat het laadscherm alle hoogte gebruikt', function () {
@@ -377,4 +393,59 @@ it('toont geen paginakop zodat het laadscherm alle hoogte gebruikt', function ()
     expect(app(DriverLoadingPhase::class)->getHeading())->toBeNull();
 
     loadingPage($route)->assertDontSeeHtml('fi-header-heading');
+});
+
+it('vinkt alleen de aangeklikte regel af, ook bij meerdere klanten', function () {
+    [$driver, $route, $item, $ordered] = boxBreakdownRoute(orderedBoxes: 2);
+
+    $tweedeOrder = Order::factory()->placed()->for(Customer::factory())->create();
+    RouteStop::factory()->create([
+        'route_id' => $route->id,
+        'order_id' => $tweedeOrder->id,
+        'stop_order' => 2,
+    ]);
+
+    $tweedeItem = OrderItem::factory()->for($tweedeOrder)->create([
+        'product_id' => $item->product_id,
+        'product_name' => 'Hele kip',
+        'product_type' => ProductType::WholeChicken,
+        'product_gram_variant_id' => $ordered->id,
+        'unit' => 'Doos 1200 g',
+        'quantity' => 1,
+        'pieces_per_box' => 10,
+        'box_weight_kg' => 12,
+        'ordered_pieces' => 10,
+        'ordered_total_weight_kg' => 12,
+    ]);
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    $page = loadingPage($route)
+        ->call('toggleRowChecked', $tweedeItem->id)
+        ->assertSee('1/2 geladen');
+
+    expect($tweedeItem->fresh()->loading_checked_at)->not->toBeNull()
+        ->and($item->fresh()->loading_checked_at)->toBeNull();
+
+    $checked = collect($page->get('products')[0]['customers'])
+        ->filter(fn (array $row): bool => $row['is_checked'])
+        ->pluck('order_item_id')
+        ->all();
+
+    expect($checked)->toBe([$tweedeItem->id]);
+});
+
+it('zet de leverbonknop en de productenlijst in de productbalk', function () {
+    [$driver, $route] = boxBreakdownRoute();
+
+    $this->actingAs($driver);
+    Filament::setCurrentPanel('driver');
+
+    loadingPage($route)
+        ->assertSeeHtml('menu: false')
+        ->assertSeeHtml('x-show="menu"')
+        ->assertSeeHtml(route('leverbon.route', $route))
+        ->assertSeeHtml('Leverbonnen downloaden')
+        ->assertSee('Alle producten');
 });
