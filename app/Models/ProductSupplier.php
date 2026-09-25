@@ -58,6 +58,12 @@ class ProductSupplier extends Model
             ->withTimestamps();
     }
 
+    public function gramVariants(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductGramVariant::class, 'product_gram_variant_supplier')
+            ->withTimestamps();
+    }
+
     public function calculatePackagingPrice(ProductPackaging $packaging): string
     {
         return sprintf(

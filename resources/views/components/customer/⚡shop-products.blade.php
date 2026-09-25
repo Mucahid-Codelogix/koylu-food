@@ -72,7 +72,7 @@ new class extends Component
                 fn ($q) => $q->where('supplier_id', $this->selectedSupplier)
             ))
             ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
-            ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
+            ->with(['activePackagings.productSuppliers', 'activeGramVariants.productSuppliers', 'activeProductSuppliers.supplier'])
             ->orderBy('shop_sort_order')
             ->orderBy('name')
             ->get();
@@ -552,8 +552,10 @@ new class extends Component
             $productSupplier = $this->resolveProductSupplier($product);
 
             if ($product->isWholeChicken()) {
-                $gramVariantId = $this->selections[$product->id]['gram_variant_id']
-                    ?? $product->defaultGramVariant()?->id;
+                $available = $this->availableGramVariants($product, $productSupplier?->id);
+                $gramVariantId = $available->firstWhere('id', $this->selections[$product->id]['gram_variant_id'] ?? null)?->id
+                    ?? $available->firstWhere('is_default', true)?->id
+                    ?? $available->first()?->id;
 
                 $this->selections[$product->id] = [
                     'gram_variant_id' => $gramVariantId,
@@ -688,12 +690,23 @@ new class extends Component
             ?? $available->first();
     }
 
+    private function availableGramVariants(Product $product, ?int $productSupplierId = null): Collection
+    {
+        $psId = $productSupplierId ?? $this->resolveProductSupplier($product)?->id;
+
+        return $product->activeGramVariants
+            ->filter(fn (ProductGramVariant $variant): bool => $variant->isAvailableForProductSupplier($psId))
+            ->values();
+    }
+
     private function resolveGramVariant(Product $product): ?ProductGramVariant
     {
+        $available = $this->availableGramVariants($product);
         $gramVariantId = $this->selections[$product->id]['gram_variant_id'] ?? null;
 
-        return $product->activeGramVariants->firstWhere('id', $gramVariantId)
-            ?? $product->defaultGramVariant();
+        return $available->firstWhere('id', $gramVariantId)
+            ?? $available->firstWhere('is_default', true)
+            ?? $available->first();
     }
 
     private function resolveProductSupplier(Product $product): ?ProductSupplier
@@ -1116,7 +1129,8 @@ new class extends Component
                         $isWholeChicken = $product->isWholeChicken();
                         $availablePackagings = $this->availablePackagings($product);
                         $hasMultiplePackagings = ! $isWholeChicken && $availablePackagings->count() > 1;
-                        $hasMultipleVariants = $isWholeChicken && $product->activeGramVariants->count() > 1;
+                        $availableGramVariants = $isWholeChicken ? $this->availableGramVariants($product) : collect();
+                        $hasMultipleVariants = $availableGramVariants->count() > 1;
                         $hasMultipleSuppliers = $product->activeProductSuppliers->count() > 1;
                     @endphp
 
@@ -1169,14 +1183,20 @@ new class extends Component
                                 @if($isWholeChicken)
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Gramvariant</label>
-                                        <select
-                                            wire:model.live="selections.{{ $product->id }}.gram_variant_id"
-                                            class="mt-1 w-full text-sm border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
-                                        >
-                                            @foreach($product->activeGramVariants as $variant)
-                                                <option value="{{ $variant->id }}">{{ $variant->boxDescription() }}</option>
-                                            @endforeach
-                                        </select>
+                                        @if($availableGramVariants->isEmpty())
+                                            <p class="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2">
+                                                Geen gramvariant beschikbaar bij deze leverancier.
+                                            </p>
+                                        @else
+                                            <select
+                                                wire:model.live="selections.{{ $product->id }}.gram_variant_id"
+                                                class="mt-1 w-full text-sm border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                                            >
+                                                @foreach($availableGramVariants as $variant)
+                                                    <option value="{{ $variant->id }}">{{ $variant->boxDescription() }}</option>
+                                                @endforeach
+                                            </select>
+                                        @endif
                                     </div>
                                 @elseif($hasMultiplePackagings)
                                     <div>

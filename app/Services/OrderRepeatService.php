@@ -27,7 +27,7 @@ class OrderRepeatService
     {
         $product = Product::query()
             ->where('is_active', true)
-            ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
+            ->with(['activePackagings.productSuppliers', 'activeGramVariants.productSuppliers', 'activeProductSuppliers.supplier'])
             ->find($item->product_id);
 
         if (! $product) {
@@ -43,8 +43,13 @@ class OrderRepeatService
         }
 
         if ($product->isWholeChicken()) {
-            $gramVariant = $product->activeGramVariants->firstWhere('id', $item->product_gram_variant_id)
-                ?? $product->defaultGramVariant();
+            $availableVariants = $product->activeGramVariants
+                ->filter(fn (ProductGramVariant $variant): bool => $variant->isAvailableForProductSupplier($productSupplier->id))
+                ->values();
+
+            $gramVariant = $availableVariants->firstWhere('id', $item->product_gram_variant_id)
+                ?? $availableVariants->firstWhere('is_default', true)
+                ?? $availableVariants->first();
 
             if (! $gramVariant) {
                 return null;

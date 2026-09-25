@@ -6,6 +6,7 @@ use Database\Factories\ProductGramVariantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProductGramVariant extends Model
 {
@@ -38,6 +39,25 @@ class ProductGramVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function productSuppliers(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductSupplier::class, 'product_gram_variant_supplier')
+            ->withTimestamps();
+    }
+
+    /**
+     * Zonder koppelingen is de variant bij elke leverancier van het product beschikbaar.
+     */
+    public function isAvailableForProductSupplier(?int $productSupplierId): bool
+    {
+        if ($this->productSuppliers->isEmpty()) {
+            return true;
+        }
+
+        return $productSupplierId !== null
+            && $this->productSuppliers->contains('id', $productSupplierId);
     }
 
     public function displayLabel(): string

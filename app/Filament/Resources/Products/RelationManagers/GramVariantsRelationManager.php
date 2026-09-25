@@ -45,6 +45,7 @@ class GramVariantsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('weight_grams')
+            ->modifyQueryUsing(fn ($query) => $query->with('productSuppliers.supplier'))
             ->defaultSort('sort_order')
             ->reorderable('sort_order')
             ->emptyStateHeading('Nog geen gramvarianten')
@@ -53,7 +54,11 @@ class GramVariantsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('weight_grams')
                     ->label('Gewicht')
-                    ->formatStateUsing(fn (int $state): string => $state.' g')
+                    ->formatStateUsing(fn (int $state): string => sprintf(
+                        '%d g (%s kg)',
+                        $state,
+                        number_format($state / 1000, 3, ',', '.'),
+                    ))
                     ->sortable(),
                 TextColumn::make('pieces_per_box')
                     ->label('Stuks/doos')
@@ -66,6 +71,12 @@ class GramVariantsRelationManager extends RelationManager
                     ->label('Label')
                     ->formatStateUsing(fn (ProductGramVariant $record): string => $record->boxDescription())
                     ->wrap(),
+                TextColumn::make('productSuppliers.supplier.name')
+                    ->label('Leveranciers')
+                    ->badge()
+                    ->placeholder('Alle')
+                    ->listWithLineBreaks()
+                    ->limitList(3),
                 IconColumn::make('is_default')
                     ->label('Standaard')
                     ->boolean(),
@@ -77,13 +88,13 @@ class GramVariantsRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Gramvariant toevoegen')
                     ->modalHeading('Nieuwe gramvariant')
-                    ->modalWidth(Width::Large),
+                    ->modalWidth(Width::TwoExtraLarge),
             ])
             ->recordActions([
                 TableActionGroup::make([
                     EditAction::make()
                         ->modalHeading('Gramvariant bewerken')
-                        ->modalWidth(Width::Large),
+                        ->modalWidth(Width::TwoExtraLarge),
                     DeleteAction::make(),
                 ]),
             ])

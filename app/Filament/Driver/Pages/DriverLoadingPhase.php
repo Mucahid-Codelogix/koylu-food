@@ -11,6 +11,7 @@ use DomainException;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Collection;
 
 class DriverLoadingPhase extends Page
 {
@@ -37,7 +38,7 @@ class DriverLoadingPhase extends Page
         $this->route = Route::with([
             'routeStops' => fn ($q) => $q->orderBy('stop_order'),
             'routeStops.order.customer',
-            'routeStops.order.items.product.activeGramVariants',
+            'routeStops.order.items.product.activeGramVariants.productSuppliers',
             'routeStops.order.items.productGramVariant',
             'routeStops.order.items.loadedGramVariant',
         ])->findOrFail($routeId);
@@ -121,7 +122,7 @@ class DriverLoadingPhase extends Page
                     'ordered_total_weight_kg' => $item->ordered_total_weight_kg,
                     'variant_weight_kg' => (float) ($item->loaded_total_weight_kg ?? $item->ordered_total_weight_kg),
                     'allows_substitute' => (bool) $item->product?->allows_loading_substitute,
-                    'gram_variants' => $item->product?->activeGramVariants ?? collect(),
+                    'gram_variants' => $this->gramVariantsForOrderItem($item),
                 ];
 
                 if (filled($item->supplier_name)) {
@@ -225,10 +226,24 @@ class DriverLoadingPhase extends Page
      * Sla de gekozen gramvariant op. Geeft false terug als dat niet mag of de
      * verplichte reden ontbreekt, zodat de chauffeur niet ongemerkt doorgaat.
      */
+    /**
+     * Gramvarianten die de leverancier van deze regel kan leveren.
+     *
+     * @return Collection<int, ProductGramVariant>
+     */
+    private function gramVariantsForOrderItem(OrderItem $item): Collection
+    {
+        $variants = $item->product?->activeGramVariants ?? collect();
+
+        return $variants
+            ->filter(fn (ProductGramVariant $variant): bool => $variant->isAvailableForProductSupplier($item->product_supplier_id))
+            ->values();
+    }
+
     private function persistLoadedVariant(int $orderItemId, bool $notifyOnSuccess): bool
     {
         $orderItem = OrderItem::query()
-            ->with(['product.activeGramVariants', 'productGramVariant'])
+            ->with(['product.activeGramVariants.productSuppliers', 'productGramVariant'])
             ->findOrFail($orderItemId);
 
         if (! $orderItem->isWholeChicken()) {
@@ -238,11 +253,13 @@ class DriverLoadingPhase extends Page
         $data = $this->loadingData[$orderItemId] ?? [];
         $variantId = (int) ($data['loaded_gram_variant_id'] ?? $orderItem->product_gram_variant_id);
 
-        $variant = $orderItem->product?->activeGramVariants->firstWhere('id', $variantId)
-            ?? ProductGramVariant::query()->find($variantId);
+        $variant = $this->gramVariantsForOrderItem($orderItem)->firstWhere('id', $variantId)
+            ?? ($variantId === $orderItem->product_gram_variant_id
+                ? ProductGramVariant::query()->find($variantId)
+                : null);
 
         if (! $variant) {
-            Notification::make()->title('Ongeldige gramvariant')->danger()->send();
+            Notification::make()->title('Ongeldige gramvariant voor deze leverancier')->danger()->send();
 
             return false;
         }
@@ -402,7 +419,7 @@ class DriverLoadingPhase extends Page
         $this->route->load([
             'routeStops' => fn ($q) => $q->orderBy('stop_order'),
             'routeStops.order.customer',
-            'routeStops.order.items.product.activeGramVariants',
+            'routeStops.order.items.product.activeGramVariants.productSuppliers',
             'routeStops.order.items.productGramVariant',
             'routeStops.order.items.loadedGramVariant',
         ]);
