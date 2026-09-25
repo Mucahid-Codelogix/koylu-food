@@ -11,6 +11,7 @@ use App\Models\ProductPackaging;
 use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Services\OrderItemSnapshotBuilder;
+use App\Services\OrderRepeatService;
 use App\Services\ProductPricingService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
@@ -623,47 +624,25 @@ new class extends Component
 
     private function addOrderItemToCart(OrderItem $item): bool
     {
-        $product = Product::query()
-            ->where('is_active', true)
-            ->with(['activePackagings.productSuppliers', 'activeGramVariants', 'activeProductSuppliers.supplier'])
-            ->find($item->product_id);
+        $line = app(OrderRepeatService::class)->resolveAvailableLine($item);
 
-        if (! $product) {
+        if (! $line) {
             return false;
         }
 
-        $productSupplier = $item->product_supplier_id
-            ? $product->activeProductSuppliers->firstWhere('id', $item->product_supplier_id)
-            : $product->defaultProductSupplier();
+        $product = $line['product'];
+        $productSupplier = $line['product_supplier'];
+        $quantity = $line['quantity'];
 
-        if (! $productSupplier) {
-            return false;
-        }
-
-        $quantity = max((float) ($product->min_order_quantity ?? 1), (float) $item->quantity);
-
-        if ($product->isWholeChicken()) {
-            $gramVariant = $product->activeGramVariants->firstWhere('id', $item->product_gram_variant_id)
-                ?? $product->defaultGramVariant();
-
-            if (! $gramVariant) {
-                return false;
-            }
-
+        if ($line['gram_variant']) {
+            $gramVariant = $line['gram_variant'];
             $cartKey = $this->cartKey($product->id, $productSupplier->id, $gramVariant->id);
             $preview = $this->buildWholeChickenPreview($product, $gramVariant, $productSupplier, $quantity);
             $this->cart[$cartKey] = $this->makeWholeChickenCartLine($product, $gramVariant, $productSupplier, $preview, $quantity, $cartKey);
 
             $this->rememberSelection($product, $productSupplier, gramVariantId: $gramVariant->id);
         } else {
-            $packaging = $product->activePackagings->firstWhere('id', $item->product_packaging_id)
-                ?? $product->defaultPackaging();
-
-            if (! $packaging || ! $packaging->isAvailableForProductSupplier($productSupplier->id)) {
-                return false;
-            }
-
-            $quantity = max((float) ($packaging->min_order_quantity ?? $product->min_order_quantity ?? 1), (float) $item->quantity);
+            $packaging = $line['packaging'];
             $cartKey = $this->cartKey($product->id, $productSupplier->id, null, $packaging->id);
             $preview = $this->buildStandardPreview($product, $packaging, $productSupplier, $quantity);
             $this->cart[$cartKey] = $this->makeStandardCartLine($product, $packaging, $productSupplier, $preview, $quantity, $cartKey);

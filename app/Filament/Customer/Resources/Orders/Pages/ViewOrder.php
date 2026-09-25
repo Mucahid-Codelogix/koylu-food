@@ -3,12 +3,15 @@
 namespace App\Filament\Customer\Resources\Orders\Pages;
 
 use App\Filament\Customer\Resources\Orders\OrderResource;
+use App\Mail\OrderPlacedMail;
 use App\Models\Order;
-use App\Models\OrderItem;
+use App\Services\OrderRepeatService;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class ViewOrder extends ViewRecord
 {
@@ -29,42 +32,58 @@ class ViewOrder extends ViewRecord
                 ->visible(fn () => $this->record->delivery !== null),
 
             Action::make('orderAgain')
-                ->label('Order Again')
+                ->label('Opnieuw bestellen')
+                ->icon('heroicon-o-arrow-path')
                 ->button()
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('Bevestig opnieuw bestellen')
-                ->modalDescription('Weet je zeker dat je deze bestelling opnieuw wilt plaatsen? Alle items worden gekopieerd.')
-                ->action(function () {
-                    $user = auth()->user();
+                ->modalDescription('Dezelfde regels worden opnieuw besteld tegen de actuele prijzen. Regels die niet meer beschikbaar zijn, vallen weg.')
+                ->modalSubmitActionLabel('Opnieuw bestellen')
+                ->action(function (OrderRepeatService $orderRepeatService): void {
+                    $result = $orderRepeatService->placeCopy($this->record);
+                    $newOrder = $result['order'];
 
-                    // Nieuwe order aanmaken
-                    $newOrder = Order::create([
-                        'order_number' => 'ORD-' . strtoupper(Str::random(6)),
-                        'customer_id' => $user->customer_id,
-                        'status' => 'placed',
-                        'order_date' => now(),
-                        'total_price' => $this->record->total_price,
-                    ]);
+                    if (! $newOrder) {
+                        Notification::make()
+                            ->title('Geen enkele regel kon worden overgenomen')
+                            ->body('De producten uit deze bestelling zijn niet meer beschikbaar.')
+                            ->warning()
+                            ->send();
 
-                    // Kopieer items
-                    foreach ($this->record->items as $item) {
-                        OrderItem::create([
-                            'order_id' => $newOrder->id,
-                            'product_id' => $item->product_id,
-                            'product_name' => $item->product_name,
-                            'unit' => $item->unit,
-                            'quantity' => $item->quantity,
-                            'unit_price' => $item->unit_price,
-                            'subtotal' => $item->subtotal,
-                        ]);
+                        return;
                     }
 
-                    \Filament\Notifications\Notification::make()
-                        ->title('Bestelling opnieuw geplaatst')
-                        ->success()
-                        ->send();
+                    $this->sendConfirmationMail($newOrder);
+
+                    $notification = Notification::make()
+                        ->title('Bestelling '.$newOrder->order_number.' geplaatst')
+                        ->success();
+
+                    if ($result['skipped'] !== []) {
+                        $notification->body('Niet meer beschikbaar: '.implode(', ', $result['skipped']));
+                    }
+
+                    $notification->send();
+
+                    $this->redirect(OrderResource::getUrl('view', ['record' => $newOrder]));
                 }),
         ];
+    }
+
+    private function sendConfirmationMail(Order $order): void
+    {
+        $email = Auth::user()?->email;
+
+        if (! $email) {
+            return;
+        }
+
+        try {
+            $order->load('items');
+            Mail::to($email)->send(new OrderPlacedMail($order));
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 }
