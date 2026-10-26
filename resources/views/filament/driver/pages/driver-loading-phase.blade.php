@@ -563,6 +563,13 @@
                     @endif
                 </div>
             </div>
+        @else
+            <x-koylu.empty title="Niets te laden" text="Op deze route staan geen producten. Neem contact op met de planner.">
+                <x-slot:icon>
+                    <x-heroicon-o-cube class="w-full h-full" />
+                </x-slot:icon>
+                <a href="{{ \App\Filament\Driver\Pages\DriverDashboard::getUrl() }}" class="koylu-link mt-3">← Terug naar Mijn Route</a>
+            </x-koylu.empty>
         @endif
     </div>
 </x-filament-panels::page>

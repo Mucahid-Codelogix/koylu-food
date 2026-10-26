@@ -115,6 +115,19 @@ class RouteWorkflowService
         if (! in_array($route->status, [RouteStatus::PLANNED, RouteStatus::IN_PROGRESS], true)) {
             throw new DomainException('Deze route kan niet meer geladen worden.');
         }
+
+        $this->assertHasStops($route);
+    }
+
+    /**
+     * Zonder stops valt er niets te laden of te leveren; de chauffeur zou dan
+     * op een leeg laadscherm vastlopen.
+     */
+    public function assertHasStops(Route $route): void
+    {
+        if ($route->routeStops()->doesntExist()) {
+            throw new DomainException('Deze route heeft geen stops. Neem contact op met de planner.');
+        }
     }
 
     public function assertCanAccessDelivery(Route $route, User $driver): void
@@ -135,6 +148,8 @@ class RouteWorkflowService
         if ($route->status !== RouteStatus::PLANNED) {
             return $route;
         }
+
+        $this->assertHasStops($route);
 
         $route->update([
             'status' => RouteStatus::IN_PROGRESS,

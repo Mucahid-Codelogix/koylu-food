@@ -5,6 +5,8 @@ namespace App\Filament\Driver\Pages;
 use App\Enums\RouteStatus;
 use App\Models\Route;
 use App\Services\RouteWorkflowService;
+use DomainException;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -60,7 +62,13 @@ class DriverDashboard extends Page
             return;
         }
 
-        app(RouteWorkflowService::class)->startRoute($this->route);
+        try {
+            app(RouteWorkflowService::class)->startRoute($this->route);
+        } catch (DomainException $e) {
+            Notification::make()->title($e->getMessage())->warning()->send();
+
+            return;
+        }
 
         $this->redirect(
             DriverLoadingPhase::getUrl().'?routeId='.$this->route->id

@@ -96,17 +96,28 @@
                         @endforeach
                     </div>
 
-                    <a
-                        href="{{ route('leverbon.route', $route) }}"
-                        target="_blank"
-                        class="koylu-btn-secondary w-full"
-                    >
-                        <x-heroicon-o-printer class="w-4 h-4" />
-                        Alle leverbonnen printen
-                    </a>
+                    @if ($route->routeStops->isNotEmpty())
+                        <a
+                            href="{{ route('leverbon.route', $route) }}"
+                            target="_blank"
+                            class="koylu-btn-secondary w-full"
+                        >
+                            <x-heroicon-o-printer class="w-4 h-4" />
+                            Alle leverbonnen printen
+                        </a>
+                    @endif
 
                     <div class="space-y-2 pt-1">
-                        @if ($route->status === \App\Enums\RouteStatus::PLANNED)
+                        @if ($route->routeStops->isEmpty())
+                            <div class="koylu-info-box-warning">
+                                <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p class="text-sm font-medium text-amber-700 dark:text-amber-400">Geen stops op deze route</p>
+                                    <p class="text-xs text-amber-500 mt-0.5">Er valt nog niets te laden. Neem contact op met de planner.</p>
+                                </div>
+                            </div>
+
+                        @elseif ($route->status === \App\Enums\RouteStatus::PLANNED)
                             <button wire:click="startLoading" class="koylu-btn-primary">
                                 <x-heroicon-o-arrow-right-circle class="w-5 h-5" />
                                 Start laden
