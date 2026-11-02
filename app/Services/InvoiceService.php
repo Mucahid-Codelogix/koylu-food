@@ -126,12 +126,24 @@ class InvoiceService
         $invoice->update(['ubl_path' => $path]);
     }
 
+    /**
+     * Volgt op het hoogste factuurnummer van dit jaar en niet op het database-id:
+     * dat id telt door na het wissen van facturen en over de jaarwisseling heen,
+     * waardoor de reeks zou verspringen.
+     */
     private function generateInvoiceNumber(): string
     {
-        $year = now()->year;
-        $last = Invoice::whereYear('created_at', $year)->max('id') ?? 0;
-        $number = str_pad($last + 1, 4, '0', STR_PAD_LEFT);
+        $prefix = 'F'.now()->year.'-';
 
-        return "F{$year}-{$number}";
+        $lastNumber = Invoice::query()
+            ->where('invoice_number', 'like', $prefix.'%')
+            ->orderByDesc('invoice_number')
+            ->value('invoice_number');
+
+        $sequence = $lastNumber !== null
+            ? ((int) substr($lastNumber, strlen($prefix))) + 1
+            : 1;
+
+        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
     }
 }

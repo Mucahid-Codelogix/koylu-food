@@ -4,6 +4,7 @@ use App\Enums\DeliveryStatus;
 use App\Models\Customer;
 use App\Models\Delivery;
 use App\Models\DeliveryItem;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\InvoiceService;
@@ -43,4 +44,31 @@ it('calculates invoice amounts from delivered quantities', function () {
     expect((float) $invoice->subtotal_amount)->toBe(50.0)
         ->and((float) $invoice->vat_amount)->toBe(0.0)
         ->and((float) $invoice->total_amount)->toBe(50.0);
+});
+
+function invoiceForNewDelivery(): Invoice
+{
+    $delivery = Delivery::factory()->create();
+
+    return app(InvoiceService::class)->createFromDelivery($delivery);
+}
+
+it('begint het factuurnummer bij 0001 nadat alle facturen gewist zijn, ook als het id doortelt', function () {
+    $this->travelTo('2026-11-02');
+
+    collect(range(1, 3))->each(fn () => invoiceForNewDelivery());
+    Invoice::query()->delete();
+
+    expect(invoiceForNewDelivery()->invoice_number)->toBe('F2026-0001')
+        ->and(invoiceForNewDelivery()->invoice_number)->toBe('F2026-0002');
+});
+
+it('begint het factuurnummer in een nieuw jaar bij 0001 en telt daarna door', function () {
+    $this->travelTo('2026-12-31');
+    collect(range(1, 3))->each(fn () => invoiceForNewDelivery());
+
+    $this->travelTo('2027-01-01');
+
+    expect(invoiceForNewDelivery()->invoice_number)->toBe('F2027-0001')
+        ->and(invoiceForNewDelivery()->invoice_number)->toBe('F2027-0002');
 });
