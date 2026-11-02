@@ -6,7 +6,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['access_token', 'refresh_token', 'expires_at', 'division'])]
+#[Fillable(['access_token', 'refresh_token', 'expires_at', 'division', 'division_name'])]
 class ExactToken extends Model
 {
     /**
@@ -28,7 +28,7 @@ class ExactToken extends Model
     }
 
     /**
-     * @param  array{access_token: string, refresh_token: string, expires_at: CarbonInterface, division?: int|null}  $attributes
+     * @param  array{access_token: string, refresh_token: string, expires_at: CarbonInterface, division?: int|null, division_name?: string|null}  $attributes
      */
     public static function storeOrUpdate(array $attributes): self
     {

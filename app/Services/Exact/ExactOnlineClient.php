@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Picqer\Financials\Exact\ApiException;
 use Picqer\Financials\Exact\Connection;
 use Picqer\Financials\Exact\Me;
+use Picqer\Financials\Exact\SystemDivision;
 
 class ExactOnlineClient
 {
@@ -50,7 +51,7 @@ class ExactOnlineClient
             throw ExactApiException::fromPicqer($exception);
         }
 
-        $this->syncCurrentDivision($connection);
+        $this->syncDivision($connection);
     }
 
     public function disconnect(): void
@@ -59,24 +60,46 @@ class ExactOnlineClient
     }
 
     /**
-     * @return array{division: int|null, full_name: string|null, email: string|null}
+     * @return array{division: int, division_name: string|null, full_name: string|null, email: string|null}
      */
     public function testConnection(): array
     {
         return $this->call(function (Connection $connection): array {
-            $me = (new Me($connection))->findWithSelect('CurrentDivision,FullName,Email');
-            $division = isset($me->CurrentDivision) ? (int) $me->CurrentDivision : null;
+            $me = (new Me($connection))->findWithSelect('FullName,Email');
+            $division = (int) $connection->getDivision();
+            $divisionName = $this->divisionName($connection, $division);
 
-            if ($division !== null) {
-                $this->persistDivision($division);
-            }
+            $this->persistDivision($division, $divisionName);
 
             return [
                 'division' => $division,
+                'division_name' => $divisionName,
                 'full_name' => $me->FullName ?? null,
                 'email' => $me->Email ?? null,
             ];
         });
+    }
+
+    /**
+     * De administratie uit EXACT_DIVISION is leidend. Zonder die instelling
+     * weigert de koppeling te werken: anders zou Exact de administratie kiezen
+     * die de gebruiker als laatste heeft geopend, en dat kan zomaar de
+     * test-administratie zijn.
+     */
+    public function configuredDivision(): ?int
+    {
+        $division = config('exact.division');
+
+        return filled($division) ? (int) $division : null;
+    }
+
+    public static function describeDivision(?int $division, ?string $divisionName): string
+    {
+        if ($division === null) {
+            return 'onbekend';
+        }
+
+        return filled($divisionName) ? sprintf('%d – %s', $division, $divisionName) : (string) $division;
     }
 
     public function connection(): Connection
@@ -138,19 +161,23 @@ class ExactOnlineClient
 
     private function buildConnection(): Connection
     {
-        $connection = new Connection;
+        $connection = app(Connection::class);
         $connection->setExactClientId((string) config('exact.client_id'));
         $connection->setExactClientSecret((string) config('exact.client_secret'));
         $connection->setRedirectUrl((string) config('exact.redirect_uri'));
         $connection->setBaseUrl((string) config('exact.base_url'));
 
-        if ($division = config('exact.division')) {
-            $connection->setDivision((int) $division);
-        }
+        $connection->setDivision($this->requireDivision());
 
         $this->registerTokenCallbacks($connection);
 
         return $connection;
+    }
+
+    private function requireDivision(): int
+    {
+        return $this->configuredDivision()
+            ?? throw new ExactApiException('EXACT_DIVISION is niet ingesteld. Stel eerst in welke Exact-administratie de app gebruikt.');
     }
 
     private function registerTokenCallbacks(Connection $connection): void
@@ -176,30 +203,44 @@ class ExactOnlineClient
 
     private function persistTokens(Connection $connection): void
     {
+        $division = (int) $connection->getDivision();
+        $storedToken = ExactToken::stored();
+
         ExactToken::storeOrUpdate([
             'access_token' => (string) $connection->getAccessToken(),
             'refresh_token' => (string) $connection->getRefreshToken(),
             'expires_at' => CarbonImmutable::createFromTimestamp($connection->getTokenExpires()),
-            'division' => $connection->getDivision() ?? config('exact.division'),
+            'division' => $division,
+            'division_name' => $storedToken?->division === $division ? $storedToken?->division_name : null,
         ]);
     }
 
-    private function syncCurrentDivision(Connection $connection): void
+    private function syncDivision(Connection $connection): void
     {
-        try {
-            $me = (new Me($connection))->findWithSelect('CurrentDivision');
-        } catch (ApiException $exception) {
-            return;
-        }
+        $division = (int) $connection->getDivision();
 
-        if (! isset($me->CurrentDivision)) {
-            return;
-        }
-
-        $this->persistDivision((int) $me->CurrentDivision);
+        $this->persistDivision($division, $this->divisionName($connection, $division));
     }
 
-    private function persistDivision(int $division): void
+    /**
+     * Exact geeft de naam alleen als het gekoppelde account toegang heeft tot
+     * de administratie. Lukt het opvragen niet, dan blijft de naam leeg en
+     * waarschuwt de koppelingspagina.
+     */
+    private function divisionName(Connection $connection, int $division): ?string
+    {
+        try {
+            $divisions = (new SystemDivision($connection))->filter("Code eq {$division}", '', 'Code,Description');
+        } catch (ApiException $exception) {
+            return null;
+        }
+
+        $description = $divisions[0]->Description ?? null;
+
+        return filled($description) ? (string) $description : null;
+    }
+
+    private function persistDivision(int $division, ?string $divisionName): void
     {
         $token = ExactToken::stored();
 
@@ -212,6 +253,7 @@ class ExactOnlineClient
             'refresh_token' => $token->refresh_token,
             'expires_at' => $token->expires_at,
             'division' => $division,
+            'division_name' => $divisionName,
         ]);
     }
 
@@ -226,9 +268,5 @@ class ExactOnlineClient
         $connection->setAccessToken($token->access_token);
         $connection->setRefreshToken($token->refresh_token);
         $connection->setTokenExpires($token->expires_at->timestamp);
-
-        if ($token->division !== null) {
-            $connection->setDivision($token->division);
-        }
     }
 }

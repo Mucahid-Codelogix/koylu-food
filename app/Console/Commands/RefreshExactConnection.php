@@ -43,7 +43,7 @@ class RefreshExactConnection extends Command
 
         $this->components->info(sprintf(
             'Exact-koppeling vernieuwd (administratie %s).',
-            $result['division'] ?? 'onbekend',
+            ExactOnlineClient::describeDivision($result['division'], $result['division_name']),
         ));
 
         return self::SUCCESS;

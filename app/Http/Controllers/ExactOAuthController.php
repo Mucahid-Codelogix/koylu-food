@@ -15,7 +15,13 @@ class ExactOAuthController extends Controller
     {
         $this->ensureAdmin();
 
-        return redirect()->away($client->authorizationUrl());
+        try {
+            return redirect()->away($client->authorizationUrl());
+        } catch (ExactApiException $exception) {
+            return redirect()
+                ->to(ExactConnection::getUrl())
+                ->with('exact_oauth_error', $exception->getMessage());
+        }
     }
 
     public function callback(Request $request, ExactOnlineClient $client): RedirectResponse

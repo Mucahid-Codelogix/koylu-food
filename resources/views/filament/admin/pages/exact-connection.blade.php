@@ -24,14 +24,30 @@
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
                         <dt class="koylu-kpi-label">Administratie (config)</dt>
                         <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $configuredDivision ?? '—' }}</dd>
+                        @if (blank($configuredDivision))
+                            <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                                <strong>EXACT_DIVISION</strong> is niet ingesteld. Koppelen en synchroniseren met Exact is geblokkeerd tot dit is ingesteld.
+                            </p>
+                        @endif
                     </div>
 
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4">
-                        <dt class="koylu-kpi-label">Administratie (token)</dt>
+                        <dt class="koylu-kpi-label">Administratie in gebruik</dt>
                         <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $division ?? '—' }}</dd>
+                        @if (filled($divisionName))
+                            <dd class="mt-0.5 text-sm text-gray-700 dark:text-gray-300">{{ $divisionName }}</dd>
+                        @endif
                         @if ($isConnected && blank($division))
                             <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                                Klik op <strong>Verbinding testen</strong> om het division-nummer op te halen.
+                                Klik op <strong>Verbinding testen</strong> om de administratie op te halen.
+                            </p>
+                        @elseif ($isConnected && filled($configuredDivision) && (string) $division !== $configuredDivision)
+                            <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                                Wijkt af van de config. Klik op <strong>Verbinding testen</strong> om bij te werken.
+                            </p>
+                        @elseif ($isConnected && blank($divisionName))
+                            <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                                Naam onbekend. Klik op <strong>Verbinding testen</strong>; blijft de naam leeg, dan heeft het gekoppelde Exact-account waarschijnlijk geen toegang tot deze administratie.
                             </p>
                         @endif
                     </div>

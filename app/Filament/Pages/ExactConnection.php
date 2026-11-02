@@ -38,6 +38,8 @@ class ExactConnection extends Page
 
     public ?int $division = null;
 
+    public ?string $divisionName = null;
+
     public ?string $configuredDivision = null;
 
     public ?string $redirectUri = null;
@@ -75,7 +77,7 @@ class ExactConnection extends Page
                 ->body(sprintf(
                     'Ingelogd als %s (administratie %s)',
                     $result['full_name'] ?? 'onbekend',
-                    $result['division'] ?? 'onbekend',
+                    ExactOnlineClient::describeDivision($result['division'], $result['division_name']),
                 ))
                 ->success()
                 ->send();
@@ -108,6 +110,7 @@ class ExactConnection extends Page
         $this->isConnected = $client->isConnected();
         $this->lastRefreshedAt = $token?->updated_at?->timezone(config('app.timezone'))->format('d-m-Y H:i');
         $this->division = $token?->division;
-        $this->configuredDivision = config('exact.division') ? (string) config('exact.division') : null;
+        $this->divisionName = $token?->division_name;
+        $this->configuredDivision = $client->configuredDivision() !== null ? (string) $client->configuredDivision() : null;
     }
 }

@@ -23,14 +23,15 @@ it('vernieuwt de koppeling zodat de refresh-token geldig blijft', function () {
     $this->mock(ExactOnlineClient::class, function ($mock): void {
         $mock->shouldReceive('isConnected')->once()->andReturnTrue();
         $mock->shouldReceive('testConnection')->once()->andReturn([
-            'division' => 4480154,
+            'division' => 459429,
+            'division_name' => 'Koylu Food B.V.',
             'full_name' => 'Koylu',
             'email' => 'info@koylufood.com',
         ]);
     });
 
     $this->artisan('exact:refresh-connection')
-        ->expectsOutputToContain('4480154')
+        ->expectsOutputToContain('459429 – Koylu Food B.V.')
         ->assertSuccessful();
 });
 
